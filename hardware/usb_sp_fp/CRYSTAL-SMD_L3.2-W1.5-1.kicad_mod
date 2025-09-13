@@ -1,0 +1,141 @@
+(footprint "CRYSTAL-SMD_L3.2-W1.5-1"
+	(version 20241229)
+	(generator "pcbnew")
+	(generator_version "9.0")
+	(layer "F.Cu")
+	(descr "CRYSTAL-SMD_L3.2-W1.5-1 footprint")
+	(tags "CRYSTAL-SMD_L3.2-W1.5-1 footprint C5361379")
+	(property "Reference" "REF**"
+		(at 0 -3.078613 0)
+		(layer "F.SilkS")
+		(uuid "86f25494-4d31-49fe-9477-e98bed26b2ac")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Value" "CRYSTAL-SMD_L3.2-W1.5-1"
+		(at 0 3.078613 0)
+		(layer "F.Fab")
+		(uuid "60dd4961-5007-406c-9bf4-e8b5ce43ed92")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "7130fb7c-4b75-47e5-aaad-2aac8f5377ec")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "a99d5197-67c8-4d3d-89b0-01da93f07afa")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.15)
+			)
+		)
+	)
+	(attr smd)
+	(fp_line
+		(start -2.0286 -1.078613)
+		(end 2.0286 -1.078613)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "1881ff57-dc6e-4028-b221-9b28791472d6")
+	)
+	(fp_line
+		(start -2.0286 1.078613)
+		(end -2.0286 -1.078613)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "605ba605-ca68-484d-a684-e22fcf0037ac")
+	)
+	(fp_line
+		(start 2.0286 -1.078613)
+		(end 2.0286 1.078613)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "96c04a68-9c20-4474-9b62-8f6f5a038867")
+	)
+	(fp_line
+		(start 2.0286 1.078613)
+		(end -2.0286 1.078613)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "90acba2f-2c74-4e4c-aa3b-f88fec8be350")
+	)
+	(fp_circle
+		(center -2.3 1.3)
+		(end -2.270028 1.3)
+		(stroke
+			(width 0.059995)
+			(type solid)
+		)
+		(fill no)
+		(layer "F.SilkS")
+		(uuid "5ba170d0-3dfc-4bea-8ff2-9188ace07b85")
+	)
+	(fp_text user "REF**"
+		(at 0 5.078613 0)
+		(layer "F.Fab")
+		(uuid "42bd0c70-4d5b-44fa-97d9-dcdcfb3c8253")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(pad "1" smd rect
+		(at -1.274981 0.000127)
+		(size 1.050013 1.7)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "d699a059-035d-4cf1-981e-46a3a8119222")
+	)
+	(pad "2" smd rect
+		(at 1.27493 0.000127)
+		(size 1.050013 1.7)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "f2a53d22-fc73-413d-8edf-20562799767f")
+	)
+	(embedded_fonts no)
+	(model "usb_sp_model/CRYSTAL-SMD_L3.2-W1.5-1.step"
+		(offset
+			(xyz 0 0 0)
+		)
+		(scale
+			(xyz 1 1 1)
+		)
+		(rotate
+			(xyz 0 0 0)
+		)
+	)
+)

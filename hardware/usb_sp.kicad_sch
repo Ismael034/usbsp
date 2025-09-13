@@ -1,0 +1,352 @@
+(kicad_sch
+	(version 20250114)
+	(generator "eeschema")
+	(generator_version "9.0")
+	(uuid "0e6f0aa4-a0ff-4959-b558-a36c5faa29c6")
+	(paper "A4")
+	(lib_symbols)
+	(wire
+		(pts
+			(xy 102.87 55.88) (xy 123.19 55.88)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "08594cdc-b195-432f-914a-5803a8e926bd")
+	)
+	(wire
+		(pts
+			(xy 81.28 91.44) (xy 143.51 91.44)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "2b1ca6dd-70e7-45f6-956c-e59c91331c17")
+	)
+	(wire
+		(pts
+			(xy 102.87 76.2) (xy 123.19 76.2)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "415ec78d-398b-45f5-a9c0-1ec4dbc02e38")
+	)
+	(wire
+		(pts
+			(xy 143.51 91.44) (xy 143.51 80.01)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "69e11756-65b6-4a70-866d-7255db35c7a5")
+	)
+	(wire
+		(pts
+			(xy 102.87 63.5) (xy 123.19 63.5)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "6c7c363d-22a0-418c-917b-2e9d529ce6f6")
+	)
+	(wire
+		(pts
+			(xy 102.87 66.04) (xy 123.19 66.04)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "7f6dad6b-201c-46e4-b320-dbf7bc18b66c")
+	)
+	(wire
+		(pts
+			(xy 78.74 88.9) (xy 78.74 92.71)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "8651cbc2-e919-417f-bcf3-6aabc08b851b")
+	)
+	(wire
+		(pts
+			(xy 81.28 88.9) (xy 81.28 91.44)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "9afc6d20-ebde-43e9-8453-ac302f0cddf4")
+	)
+	(wire
+		(pts
+			(xy 78.74 92.71) (xy 146.05 92.71)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "9b4c1b71-0c3f-45f9-9964-dcc44ca38006")
+	)
+	(wire
+		(pts
+			(xy 146.05 92.71) (xy 146.05 80.01)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "a93d18d7-a1f1-414c-bbcd-508a8c18c419")
+	)
+	(wire
+		(pts
+			(xy 102.87 73.66) (xy 123.19 73.66)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "ce6c9c06-fe86-4c9f-b2f8-cec8fc56b0ba")
+	)
+	(wire
+		(pts
+			(xy 102.87 60.96) (xy 123.19 60.96)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "d47e18dd-ee46-4ea2-873b-de6afaff4788")
+	)
+	(sheet
+		(at 123.19 49.53)
+		(size 29.21 30.48)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(stroke
+			(width 0)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0.0000)
+		)
+		(uuid "695d48d0-b127-49b4-b19c-0382de2ea4d3")
+		(property "Sheetname" "CH32V203"
+			(at 123.19 48.8184 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "1_1.kicad_sch"
+			(at 123.19 80.5946 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+			)
+		)
+		(pin "EEPROM_SCL" input
+			(at 123.19 73.66 180)
+			(uuid "d9e83d66-4ee8-4584-8819-656d1e21d00c")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "EEPROM_SDA" input
+			(at 123.19 76.2 180)
+			(uuid "204b3f26-eb41-4040-8f1b-a8b41a2e9b57")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "SPI_CLK" input
+			(at 123.19 63.5 180)
+			(uuid "4881860a-84dd-4b02-be2d-e1b6df70b36f")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "SPI_MISO" input
+			(at 123.19 60.96 180)
+			(uuid "b4a9a795-fa46-4fc6-a6f9-0214796cee70")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "SPI_MOSI" input
+			(at 123.19 66.04 180)
+			(uuid "b857cc24-650c-4126-a7be-81de630ca8cb")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "RST_CH572" input
+			(at 146.05 80.01 270)
+			(uuid "d7a2d5ff-48d5-4158-8419-37871974b9ce")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "GPIO_RST_CH32" input
+			(at 143.51 80.01 270)
+			(uuid "d4915b6b-b3cf-4873-86fe-2b1345e87ea5")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(instances
+			(project "usb_sp"
+				(path "/0e6f0aa4-a0ff-4959-b558-a36c5faa29c6"
+					(page "1")
+				)
+			)
+		)
+	)
+	(sheet
+		(at 54.61 41.91)
+		(size 48.26 46.99)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(stroke
+			(width 0)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0.0000)
+		)
+		(uuid "a29adb5f-24c6-4d80-a119-3a97ae9ee628")
+		(property "Sheetname" "CH572D"
+			(at 54.61 41.1984 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "2_2.kicad_sch"
+			(at 54.61 89.4846 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+			)
+		)
+		(pin "EEPROM_SCL" input
+			(at 102.87 73.66 0)
+			(uuid "4ec5378c-f51b-4cd8-93dd-b98748eb2e8e")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "EEPROM_SDA" input
+			(at 102.87 76.2 0)
+			(uuid "252266e5-8102-4040-ba48-f30e42802c54")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "SPI_MISO" input
+			(at 102.87 60.96 0)
+			(uuid "8729a62d-664b-44da-a301-aad9e8c3f14a")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "SPI_MOSI" input
+			(at 102.87 66.04 0)
+			(uuid "0ae768a5-f2ee-4414-93af-0ca5bc154923")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "SPI_CLK" input
+			(at 102.87 63.5 0)
+			(uuid "99bf68fe-e225-4b83-835f-0a85c79cb8c6")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "RST_CH572" input
+			(at 78.74 88.9 270)
+			(uuid "a4b29694-f744-4e65-b8e2-b489fd7be94e")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "GPIO_RST_CH32" input
+			(at 81.28 88.9 270)
+			(uuid "a54436dc-89be-441b-9546-008206458342")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(instances
+			(project "usb_sp"
+				(path "/0e6f0aa4-a0ff-4959-b558-a36c5faa29c6"
+					(page "2")
+				)
+			)
+		)
+	)
+)
