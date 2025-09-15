@@ -41,3 +41,10 @@ fp-info-cache
 
 # Gerber files
 **/*output/
+
+# meson
+build*/
+
+# MounRiver Studio files
+*.mrs
+obj/
