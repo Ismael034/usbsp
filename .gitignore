@@ -48,3 +48,6 @@ build*/
 # MounRiver Studio files
 *.mrs
 obj/
+
+.vscode/
+.idea/
