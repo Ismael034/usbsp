@@ -6,11 +6,12 @@ A work in progress for a (really) cheap embedded USB packet analyzer. CURRENTLY 
 
 The required toolchain is alredy included. It is a custom toolchain made by WCH, downloaded from [here](https://www.mounriver.com/download). This toolchain constains custom targets for their MCUs. Other toolchains (like xpack) have not been tested.
 
-### Clone the repository
+### Clone the repository and add the toolchain to the path
 
 ```
 git clone https://github.com/Ismael034/usbsp.git
 cd usbsp
+export PATH=$PWD/toolchain/bin/:$PATH
 ```
 
 ### Configure meson

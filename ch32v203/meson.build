@@ -70,11 +70,11 @@ firmware_sources = files(
 linker_script = meson.current_source_dir() + '/ch32v203.ld'
 
 # Firmware ELF executable
-firmware_exe = executable('ch32v203_firmware',
+firmware_exe = executable('ch32v203',
     sources: [ firmware_main, firmware_sources ],
     include_directories: inc_dirs,
     link_args: ['-T', linker_script],
-    name_suffix: 'embed'
+    name_suffix: 'elf'
 )
 
 # Test ELF executable
@@ -82,28 +82,28 @@ firmware_test_exe = executable('ch32v203_test',
     sources: [ firmware_main_test, firmware_sources ],
     include_directories: inc_dirs,
     link_args: ['-T', linker_script],
-    name_suffix: 'embed'
+    name_suffix: 'elf'
 )
 
 # Generate HEX for firmware
 firmware_hex = custom_target(
-    'ch32v203_firmware_hex',
+    'ch32v203.hex',
     input: firmware_exe,
-    output: 'ch32v203_firmware.hex',
+    output: 'ch32v203.hex',
     command: ['riscv-none-embed-objcopy', '-O', 'ihex', '@INPUT@', '@OUTPUT@'],
 )
 
 # Generate BIN for firmware
 firmware_bin = custom_target(
-    'ch32v203_firmware_bin',
+    'ch32v203.bin',
     input: firmware_exe,
-    output: 'ch32v203_firmware.bin',
+    output: 'ch32v203.bin',
     command: ['riscv-none-embed-objcopy', '-O', 'binary', '@INPUT@', '@OUTPUT@'],
 )
 
 # Generate HEX for test executable
 firmware_test_hex = custom_target(
-    'ch32v203_test_hex',
+    'ch32v203_test.hex',
     input: firmware_test_exe,
     output: 'ch32v203_test.hex',
     command: ['riscv-none-embed-objcopy', '-O', 'ihex', '@INPUT@', '@OUTPUT@'],
@@ -111,7 +111,7 @@ firmware_test_hex = custom_target(
 
 # Generate BIN for test executable
 firmware_test_bin = custom_target(
-    'ch32v203_test_bin',
+    'ch32v203_test.bin',
     input: firmware_test_exe,
     output: 'ch32v203_test.bin',
     command: ['riscv-none-embed-objcopy', '-O', 'binary', '@INPUT@', '@OUTPUT@'],

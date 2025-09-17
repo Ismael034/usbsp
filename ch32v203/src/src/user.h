@@ -21,6 +21,7 @@ void EXTI9_5_IRQHandler(void) __attribute__((interrupt("WCH-Interrupt-fast")));
 
 void user_btn_init(void);
 uint8_t user_btn_test(void);
+void user_btn_handler(void);
 
 void user_led_init(void);
 void user_led_toggle(void);

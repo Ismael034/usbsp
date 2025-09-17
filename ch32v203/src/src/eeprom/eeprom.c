@@ -232,6 +232,28 @@ void AT24C02_write(uint16_t write_address, uint8_t *buffer, uint16_t num_to_writ
 /*********************************************************************
  * @fn      AT24C02_test
  *
+ * @brief   Reads PID and VID from AT24C02 EEPROM.
+ *
+ * @return  void
+ */
+void AT24C02_read_usb_info()
+{
+    uint8_t buffer[4];
+
+    // Read 4 bytes from EEPROM (VID @ 0x00, PID @ 0x02)
+    AT24C02_read(0x00, buffer, 4);
+
+    vid = ((uint16_t)buffer[EEPROM_ADDR_DIV] << 8) | buffer[EEPROM_ADDR_DIV + 1];
+    pid = ((uint16_t)buffer[EEPROM_ADDR_PID] << 8) | buffer[EEPROM_ADDR_PID + 1];
+
+    printf("Read from EEPROM:\n\r");
+    printf("VID: 0x%04X (%u)\n\r", vid, vid);
+    printf("PID: 0x%04X (%u)\n\r", pid, pid);
+}
+
+/*********************************************************************
+ * @fn      AT24C02_test
+ *
  * @brief   Tests AT24C02 EEPROM by writing and reading data.
  *
  * @return  0 on success, non-zero on failure

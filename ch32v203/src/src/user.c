@@ -64,16 +64,52 @@ uint8_t user_btn_test()
 	return 0;
 }
 
+void user_btn_handler(void)
+{
+    user_led_toggle();
+    printf("Button pressed\n");
+    uint8_t s = USBFSH_CheckRootHubPortStatus(RootHubDev.bStatus); // Check USB device connection or disconnection
+    printf("%d\n", s);
+
+    if(s == ROOT_DEV_CONNECTED || s == ROOT_DEV_FAILED)
+    {
+        printf("USB Port Dev In.\r\n");
+
+        usbd_configured = FALSE;
+        RootHubDev.bStatus = ROOT_DEV_CONNECTED;
+        RootHubDev.DeviceIndex = DEF_USBFS_PORT_INDEX * DEF_ONE_USB_SUP_DEV_TOTAL;
+        s = usbh_enumerate_root_device(); // Simply enumerate root device
+        
+        if(s == ERR_SUCCESS)
+        {
+            uint8_t buffer[4];
+            buffer[0] = USBD_DeviceDescriptor[9];
+            buffer[1] = USBD_DeviceDescriptor[8];
+            buffer[2] = USBD_DeviceDescriptor[11];
+            buffer[3] = USBD_DeviceDescriptor[10];
+
+            AT24C02_write(EEPROM_ADDR_DIV, buffer, 4);  // Write both div and pid
+
+            printf("Write OK!\n\r");
+        }
+    }
+    user_led_toggle();
+}
+
 void EXTI9_5_IRQHandler(void)
 {
-    if (EXTI_GetITStatus(BUTTON_EXTI_LINE) != RESET) {
+    if (EXTI_GetITStatus(BUTTON_EXTI_LINE) != RESET)
+    {
         uint32_t current_time = SysTick->CNT;
         uint32_t delta = (current_time - last_interrupt_time); 
-        if (delta >= DEBOUNCE_TICKS) {  // Valid press
+        if (delta >= DEBOUNCE_TICKS)
+        {  // Valid press
             last_interrupt_time = current_time;
-            button_pressed = 1;  // Set flag for main loop
-        } else {
-            button_pressed = 0;  // Reset only on bounce (optional, but prevents false sets)
+            button_pressed = 1;
+            user_btn_handler();
+        } else
+        {
+            button_pressed = 0;
         }
         EXTI_ClearITPendingBit(BUTTON_EXTI_LINE);
     }

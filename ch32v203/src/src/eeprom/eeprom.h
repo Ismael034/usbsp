@@ -15,6 +15,7 @@ uint8_t AT24C02_read_one_byte(uint16_t read_address);
 void AT24C02_write_one_byte(uint16_t write_address, uint8_t data_to_write);
 void AT24C02_read(uint16_t read_address, uint8_t *buffer, uint16_t num_to_read);
 void AT24C02_write(uint16_t write_address, uint8_t *buffer, uint16_t num_to_write);
+void AT24C02_read_usb_info();
 uint8_t AT24C02_test(void);
 void tim2_init(uint16_t prescaler);
 

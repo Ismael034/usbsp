@@ -223,14 +223,14 @@ uint8_t *usb_relay_get_string_descriptor(uint16_t length)
 
 uint8_t *usb_relay_get_hid_report_descriptor(uint16_t length)
 {
-    uint16_t descriptor_size = 0;
+    //uint16_t descriptor_size = 0;
 
     //printf_usbd_debug("hid: report descriptor contents requested\n\r");
     //printf_usbd_debug("Length %d\n\r", length);
 
     uint8_t num;
     num = current_interface_num;
-    descriptor_size = HostCtl[RootHubDev.DeviceIndex].Interface[num].HidDescLen;
+    //descriptor_size = HostCtl[RootHubDev.DeviceIndex].Interface[num].HidDescLen;
 
     //printf_usbd_debug("Get Interface%d ep0_size: %d, HidDescLen: %d \r\n", num, ep0_size, descriptor_size);
 

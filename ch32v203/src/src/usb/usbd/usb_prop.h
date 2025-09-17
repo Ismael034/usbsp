@@ -4,10 +4,12 @@
 #include "ch32v20x.h"
 #include "usbd.h"
 
+#ifndef CDC_GET_LINE_CODING
 #define CDC_GET_LINE_CODING         0x21                                      /* This request allows the host to find out the currently configured line coding */
 #define CDC_SET_LINE_CODING         0x20                                      /* Configures DTE rate, stop-bits, parity, and number-of-character */
 #define CDC_SET_LINE_CTLSTE         0x22                                      /* This request generates RS-232/V.24 style control signals */
-#define CDC_SEND_BREAK              0x23      
+#define CDC_SEND_BREAK              0x23    
+#endif  
 
 #define HID_SET_IDLE 0x0A
 #define HID_SET_PROTOCOL 0x0B

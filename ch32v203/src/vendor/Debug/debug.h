@@ -14,6 +14,7 @@
 #define __DEBUG_H
 
 #include "stdio.h"
+#include <string.h>
 #include "ch32v20x.h"
 
 #ifdef __cplusplus

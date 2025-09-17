@@ -286,7 +286,8 @@ void _read(int fd, char *buf, int *size)
         {
             while (!USART_GetFlagStatus(_USART, USART_FLAG_RXNE));
             character = USART_ReceiveData(_USART);
-
+            
+            if (i >= sizeof(line) - 1) break;
             switch (character) {
                 case '\r':
                     USART_SendData(_USART, '\n');
@@ -304,7 +305,9 @@ void _read(int fd, char *buf, int *size)
                     break;
             }
         } while (character != '\n' && character != '\r');
-        
+
+        *size = i;
+        memcpy(buf, line, *size);
         i = 0;
     }
 }
