@@ -37,6 +37,16 @@
 	)
 	(wire
 		(pts
+			(xy 102.87 68.58) (xy 123.19 68.58)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "551f8e79-1ea4-438e-a071-003b81f986e7")
+	)
+	(wire
+		(pts
 			(xy 143.51 91.44) (xy 143.51 80.01)
 		)
 		(stroke
@@ -229,6 +239,16 @@
 				(justify left)
 			)
 		)
+		(pin "SPI_CS" input
+			(at 123.19 68.58 180)
+			(uuid "d4b1483c-0df5-4c65-a304-7e8c1b088b53")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
 		(instances
 			(project "usb_sp"
 				(path "/0e6f0aa4-a0ff-4959-b558-a36c5faa29c6"
@@ -339,6 +359,16 @@
 					(size 1.27 1.27)
 				)
 				(justify left)
+			)
+		)
+		(pin "SPI_CS" input
+			(at 102.87 68.58 0)
+			(uuid "8f63b2d6-43d5-44a6-b9e7-197e86163e1e")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
 			)
 		)
 		(instances

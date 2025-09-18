@@ -4398,10 +4398,6 @@
 		(uuid "17489816-a621-45d7-aed7-2aff1b3eac95")
 	)
 	(no_connect
-		(at 311.15 205.74)
-		(uuid "21c524b2-0b39-447f-a0b1-207bb3cabe71")
-	)
-	(no_connect
 		(at 364.49 198.12)
 		(uuid "27443542-3c07-4edc-a3f9-31f5f1352b95")
 	)
@@ -5210,6 +5206,16 @@
 			(type default)
 		)
 		(uuid "7202b8d9-bc77-4dbc-8c78-48d73767585a")
+	)
+	(wire
+		(pts
+			(xy 294.64 205.74) (xy 311.15 205.74)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "73ad3ee7-0791-43f2-953f-f1d439df9a44")
 	)
 	(wire
 		(pts
@@ -6431,6 +6437,16 @@
 		)
 		(uuid "04353f9f-7071-474e-aeb0-01bd6858cc22")
 	)
+	(label "SPI_CS"
+		(at 294.64 205.74 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "0b48c42b-b035-493d-b2fb-44e3467e4cdd")
+	)
 	(label "BOOT_0"
 		(at 379.73 182.88 0)
 		(effects
@@ -7148,6 +7164,17 @@
 			(justify right)
 		)
 		(uuid "4511b71a-f409-45a7-a8d0-b076a40569d8")
+	)
+	(hierarchical_label "SPI_CS"
+		(shape input)
+		(at 294.64 205.74 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "64af16ea-6c0c-46f2-9d5e-ebd2c6c5a8ab")
 	)
 	(hierarchical_label "SPI_CLK"
 		(shape input)
