@@ -75,7 +75,6 @@ void user_btn_handler(void)
     {
         printf("USB Port Dev In.\r\n");
 
-        usbd_configured = FALSE;
         RootHubDev.bStatus = ROOT_DEV_CONNECTED;
         RootHubDev.DeviceIndex = DEF_USBFS_PORT_INDEX * DEF_ONE_USB_SUP_DEV_TOTAL;
         s = usbh_enumerate_root_device(); // Simply enumerate root device

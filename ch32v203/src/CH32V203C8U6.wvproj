@@ -77,7 +77,37 @@
 				"name": "timer.c"
 			},
 			{
-				"name": "timer.h",
+				"parentLogicPath": "src",
+				"type": "file",
+				"name": "timer.h"
+			},
+			{
+				"parentLogicPath": "src/usb/usbh",
+				"type": "file",
+				"name": "usb_hub.c"
+			},
+			{
+				"parentLogicPath": "src/usb/usbh",
+				"type": "file",
+				"name": "usb_hub.h"
+			},
+			{
+				"parentLogicPath": "src/usb/usbh",
+				"type": "file",
+				"name": "usb_hid.c"
+			},
+			{
+				"parentLogicPath": "src/usb/usbh",
+				"type": "file",
+				"name": "usb_hid.h"
+			},
+			{
+				"parentLogicPath": "src",
+				"type": "file",
+				"name": "trap.c"
+			},
+			{
+				"name": "trap.h",
 				"parentLogicPath": "src",
 				"type": "file"
 			}
@@ -106,12 +136,12 @@
 					"${project}/Startup/startup_ch32v20x_D8.S"
 				],
 				"optimization": {
-					"level": "size",
+					"level": "most",
 					"message_length": true,
 					"char_is_signed": true,
 					"function_sections": true,
 					"data_sections": true,
-					"no_common_unitialized": true,
+					"no_common_unitialized": false,
 					"do_not_inline_functions": false,
 					"assume_freestanding_environment": false,
 					"disable_builtin": false,
@@ -146,7 +176,7 @@
 					"other_warning_flags": ""
 				},
 				"debugging": {
-					"debug_level": "default",
+					"debug_level": "max",
 					"debug_format": "default",
 					"generate_prof_information": false,
 					"generate_gprof_information": false,

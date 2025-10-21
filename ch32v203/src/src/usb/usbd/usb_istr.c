@@ -1,4 +1,5 @@
 #include "usb_istr.h"
+#include "debug_log.h"
 
 uint16_t Ep0RxBlks;
 
@@ -58,7 +59,8 @@ void usbd_istr(void)
   }
 #endif
  
-  
+//printf("wIstr: %02x\n\r", wIstr & wInterrupt_Mask);
+
 #if (IMR_MSK & ISTR_CTR)
   if (wIstr & ISTR_CTR & wInterrupt_Mask)
   {
@@ -84,6 +86,7 @@ void usbd_istr(void)
 #if (IMR_MSK & ISTR_DOVR)
   if (wIstr & ISTR_DOVR & wInterrupt_Mask)
   {
+    LOG_ERROR("USB: EP data overrun");
     _SetISTR((uint16_t)CLR_DOVR);
 #ifdef DOVR_CALLBACK
     DOVR_Callback();

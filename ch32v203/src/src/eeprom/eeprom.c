@@ -1,4 +1,5 @@
 #include "debug.h"
+#include "debug_log.h"
 #include "eeprom.h"
 #include <stdlib.h>
 #include <string.h>
@@ -169,11 +170,11 @@ void AT24C02_write_one_byte(uint16_t write_address, uint8_t data_to_write)
     while (!I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_BYTE_TRANSMITTED));
 #elif (Address_Lenth == Address_16bit)
     I2C_SendData(I2C2, (uint8_t)(write_address >> 8));
-    printf("Sent high byte of address: 0x%02X\r\n", (uint8_t)(write_address >> 8));
+    LOG_DEBUG("EEPROM: sent high byte of address: 0x%02X", (uint8_t)(write_address >> 8));
     while (!I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_BYTE_TRANSMITTED));
 
     I2C_SendData(I2C2, (uint8_t)(write_address & 0x00FF));
-    printf("Sent low byte of address: 0x%02X\r\n", (uint8_t)(write_address & 0x00FF));
+    LOG_DEBUG("EEPROM: sent low byte of address: 0x%02X", (uint8_t)(write_address & 0x00FF));
     while (!I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_BYTE_TRANSMITTED));
 #endif
 
@@ -246,9 +247,9 @@ void AT24C02_read_usb_info()
     vid = ((uint16_t)buffer[EEPROM_ADDR_DIV] << 8) | buffer[EEPROM_ADDR_DIV + 1];
     pid = ((uint16_t)buffer[EEPROM_ADDR_PID] << 8) | buffer[EEPROM_ADDR_PID + 1];
 
-    printf("Read from EEPROM:\n\r");
-    printf("VID: 0x%04X (%u)\n\r", vid, vid);
-    printf("PID: 0x%04X (%u)\n\r", pid, pid);
+    LOG_DEBUG("EEPROM: read from EEPROM:");
+    LOG_DEBUG("EEPROM: VID: 0x%04X (%u)", vid, vid);
+    LOG_DEBUG("EEPROM: PID: 0x%04X (%u)", pid, pid);
 }
 
 /*********************************************************************

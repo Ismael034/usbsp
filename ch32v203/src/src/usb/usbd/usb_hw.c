@@ -1,4 +1,5 @@
 #include "usb_hw.h"
+#include "debug_log.h"
 
 void USBWakeUp_IRQHandler(void) __attribute__((interrupt("WCH-Interrupt-fast")));
 void USB_LP_CAN1_RX0_IRQHandler(void) __attribute__((interrupt("WCH-Interrupt-fast")));
@@ -36,14 +37,13 @@ void usbd_hw_set_clk(void)
 
 void usb_hw_set_lpm(void)
 {
- 	printf_usbd_debug("enter low power mode\r\n");
 	bDeviceState = SUSPENDED;
 }
 
 void usb_hw_leave_lpm(void)
 {
 	DEVICE_INFO *pInfo = &Device_Info;
-	printf_usbd_debug("leave low power mode\r\n"); 
+	fflush(stdout);
 	if (pInfo->Current_Configuration!=0){
 		bDeviceState = CONFIGURED;
 	}

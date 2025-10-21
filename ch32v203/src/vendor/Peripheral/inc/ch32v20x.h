@@ -3993,6 +3993,7 @@ typedef struct
 #define RCC_PLLMULL15                           ((uint32_t)0x00340000) /* PLL input clock*15 */
 #define RCC_PLLMULL16                           ((uint32_t)0x00380000) /* PLL input clock*16 */
 #define RCC_PLLMULL18                           ((uint32_t)0x003C0000) /* PLL input clock*18 */
+#define RCC_PLLMULL20                           ((uint32_t)0x00400000) /* PLL input clock*20 */
 
 #define RCC_USBPRE                              ((uint32_t)0x00400000) /* USB Device prescaler */
 

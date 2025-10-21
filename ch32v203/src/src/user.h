@@ -2,6 +2,7 @@
 #define __USER_H
 
 #include "ch32v20x.h"
+#include "debug_log.h"
 #include "usbh.h"
 #include "eeprom.h"
 
