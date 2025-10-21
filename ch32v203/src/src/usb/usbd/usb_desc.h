@@ -20,6 +20,7 @@
 #define USBD_SIZE_DEVICE_DESC       18           /* Device descriptor size */
 #define USBD_SIZE_STRING_LANGID     4            /* Language ID string size */
 #define USBD_MAX_STRING_LEN         255          /* Max string descriptor length */
+#define USBD_MAX_BUFF_LEN           1024         /* Max usb buffer length */
 
 #define MAX_USB_INTERFACES 8
 #define MAX_USB_IN_ENDPOINTS 8
@@ -169,12 +170,19 @@ typedef struct {
     } data;
 } ClassSpecificParams;
 
+typedef struct {
+    uint8_t USBD_StringDescriptor[USBD_MAX_BUFF_LEN];
+    uint16_t USBD_StringDescriptorSize;
+} USBD_StringDescriptor_s;
+
 /* External Descriptor Arrays and Sizes */
 extern uint8_t USBD_DeviceDescriptor[USBD_SIZE_DEVICE_DESC];
+extern uint8_t *USBD_BOSDescriptor;
+extern uint16_t USBD_BOSDescriptorSize;
 extern uint8_t *USBD_ConfigDescriptor;
 extern uint16_t USBD_ConfigDescSize;
 
-extern uint8_t *USBD_StringDescriptor[4];
+extern USBD_StringDescriptor_s USBD_StringDescriptor[4];
 extern uint8_t USBD_StringLangID[USBD_SIZE_STRING_LANGID];
 extern uint8_t *USBD_StringVendor;
 extern uint8_t *USBD_StringProduct;

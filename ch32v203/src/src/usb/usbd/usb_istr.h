@@ -16,6 +16,8 @@
 #include "usbd.h"
 #include "usb_lib.h"
 
+extern __IO uint8_t bIntPackSOF;
+
 void usbd_istr(void);
 void EP1_IN_Callback(void);
 void EP2_IN_Callback(void);

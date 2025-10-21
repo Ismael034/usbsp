@@ -5,14 +5,14 @@
 #include "user.h"
 #include "eeprom.h"
 #include <stdbool.h>
-#include <string.h>
 
-void print_banner(void) {
+void print_banner(void)
+{
     printf("CH32V203 Hardware test\n\r");
 }
 
-int main(void) {
-
+int main(void)
+{
     NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);
     Delay_Init();
     USART_Debug_Init(115200);
@@ -20,7 +20,7 @@ int main(void) {
     printf("\033[H");
     printf("\033[2J");
     print_banner();
-    printf("SystemClk:%d\r\n", SystemCoreClock);
+    printf("SystemClk:%ld\r\n", SystemCoreClock);
     printf("\r\n");
 
     tim2_init((SystemCoreClock / 100) - 1); // General purpouse timout timer

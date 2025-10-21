@@ -15,9 +15,9 @@ DEVICE_PROP device_property_relay =
 	usb_relay_data_setup,
 	usb_relay_nodata_setup,
 	usb_relay_get_interface_setting,
-	usb_relay_get_device_descriptor,
-	usb_relay_get_config_descriptor,
-	usb_relay_get_string_descriptor,
+	usb_relay_data_generic,
+	usb_relay_data_generic,
+	usb_relay_data_generic,
 	0,
 	DEF_USBD_UEP0_SIZE                                 
 };
