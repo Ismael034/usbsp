@@ -6,8 +6,6 @@
 #include "ch32v20x_usb.h"
 #include "usb_config.h"
 #include "app.h"
-#include "usb_hid.h"
-#include "usb_hub.h"
 #include "usb_hw.h"
 
 
@@ -32,7 +30,13 @@ __attribute__((aligned(4))) static const uint8_t  SetupGetDevDesc[ ] =
 /* Get Configuration Descriptor Command Packet */
 __attribute__((aligned(4))) static const uint8_t SetupGetCfgDesc[ ] =
 {
-    USB_REQ_TYP_IN, USB_GET_DESCRIPTOR, 0x00, USB_DESCR_TYP_CONFIG, 0x00, 0x00, 0x04, 0x00
+    USB_REQ_TYP_IN, USB_GET_DESCRIPTOR, 0x00, USB_DESCR_TYP_CONFIG, 0x00, 0x00, 0x09, 0x00
+};
+
+/* Get BOS Descriptor Command Packet */
+__attribute__((aligned(4))) static const uint8_t SetupGetBosDesc[ ] =
+{
+    USB_REQ_TYP_IN, USB_GET_DESCRIPTOR, 0x00, USB_DESCR_TYP_BOS, 0x00, 0x00, 0x05, 0x00
 };
 
 /* Get String Descriptor Command Packet */
@@ -86,11 +90,13 @@ extern uint8_t USBFSH_Transact( uint8_t endp_pid, uint8_t endp_tog, uint16_t tim
 extern uint8_t USBFSH_CtrlTransfer( uint8_t ep0_size, uint8_t *pbuf, uint16_t *plen );
 extern uint8_t USBFSH_GetDeviceDescr( uint8_t *pep0_size, uint8_t *pbuf );
 extern uint8_t USBFSH_GetConfigDescr( uint8_t ep0_size, uint8_t *pbuf, uint16_t buf_len, uint16_t *pcfg_len );
+extern uint8_t USBFSH_GetBOSDescr(uint8_t ep0_size, uint8_t *pbuf, uint16_t buf_len, uint16_t *pbos_len);
 extern uint8_t USBFSH_GetStrDescr( uint8_t ep0_size, uint8_t str_num, uint8_t *pbuf, uint8_t *pbuf_size );
 extern uint8_t USBFSH_SetUsbAddress( uint8_t ep0_size, uint8_t addr );
 extern uint8_t USBFSH_SetUsbConfig( uint8_t ep0_size, uint8_t cfg_val );
 extern uint8_t USBFSH_ClearEndpStall( uint8_t ep0_size, uint8_t endp_num );
 extern uint8_t USBFSH_GetEndpData( uint8_t endp_num, uint8_t *pendp_tog, uint8_t *pbuf, uint16_t *plen );
 extern uint8_t USBFSH_SendEndpData( uint8_t endp_num, uint8_t *pendp_tog, uint8_t *pbuf, uint16_t len );
-
+extern uint8_t USBFSH_SendEndpDataLarge(uint8_t endp_num, uint8_t *pendp_tog, uint8_t *pbuf, uint16_t total_len);
+extern uint8_t CheckUSBDataAvailable(uint8_t endp_num);
 #endif

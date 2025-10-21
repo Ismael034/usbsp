@@ -2,289 +2,214 @@
 #include "usbd.h"
 #include "usbh.h"
 #include "eeprom.h"
-
+#include "debug_log.h"
 
 uint16_t ep0_size;
 uint8_t *paddr;
-uint8_t usbd_configured = 1;
 static uint16_t current_interface_num = 0;
 extern uint8_t USBD_Endp3_Busy;
 extern usb_state_t usb_state;
 
+/**
+ * Initialize the USB relay.
+ */
 void usb_relay_init(void)
 {
     usbd_init();
 }
 
+/**
+ * Reset the USB relay.
+ */
 void usb_relay_reset(void)
 {
     usbd_reset();
 }
 
+/**
+ * Handle USB status IN stage.
+ */
 void usb_relay_status_in(void)
 {
-    usbd_status_in();
+    USBFSH_CtrlTransfer(ep0_size, Setup_Buf, &Setup_Buf_Len);
 }
 
+/**
+ * Handle USB status OUT stage.
+ */
 void usb_relay_status_out(void)
 {
-    usbd_status_out();
+    LOG_DEBUG("USB: status OUT stage complete");
+    if (pInformation->Ctrl_Info.CopyData != NULL)
+    {
+        pInformation->Ctrl_Info.Usb_wOffset = 0;
+    }
+    SetEPRxCount(ENDP0, pProperty->MaxPacketSize);
+    SetEPRxStatus(ENDP0, EP_RX_VALID);
 }
 
+/**
+ * Handle USB data setup requests.
+ * @param request_no The USB request number.
+ * @return USB_SUCCESS on success, USB_UNSUPPORT otherwise.
+ */
 RESULT usb_relay_data_setup(uint8_t request_no)
 {
-    uint8_t wValueHi = pInformation->USBwValue1;
     current_interface_num = pInformation->USBwIndex0;
-    
-    uint8_t *(*CopyRoutine)(uint16_t) = NULL;
 
-    printf_usbd_debug("usb data request no %x, type_recipient %x\n\r", request_no, Type_Recipient);
+    LOG_DEBUG("USB: usbr data request %x, recipient %02X", 
+                      pInformation->USBbRequest, 
+                      pInformation->USBbmRequestType);
 
-    if (Type_Recipient == (STANDARD_REQUEST | DEVICE_RECIPIENT) ||
-        Type_Recipient == (STANDARD_REQUEST | INTERFACE_RECIPIENT) ||
-        Type_Recipient == (STANDARD_REQUEST | ENDPOINT_RECIPIENT))
-    {
-        switch (request_no)
-        {
-            case GET_STATUS:
-            {    
-                pInformation->Ctrl_Info.Usb_wLength = 2;
-                printf_usbd_debug("GET_STATUS (device): Returning 0x%02x%02x\n\r", 0,0);
-                return USB_SUCCESS;
-            }
-            case GET_DESCRIPTOR:
-            {
-
-                printf_usbd_debug("usb data request %x\n\r", wValueHi);
-
-                if (wValueHi == DEVICE_DESCRIPTOR)
-                {
-                    CopyRoutine = usb_relay_get_device_descriptor;
-                }
-                else if (wValueHi == CONFIG_DESCRIPTOR)
-                {
-                    CopyRoutine = usb_relay_get_config_descriptor;
-                }
-                else if (wValueHi == STRING_DESCRIPTOR)
-                {
-                    CopyRoutine = usb_relay_get_string_descriptor;
-                }
-                else if (wValueHi == HID_DESCRIPTOR) 
-                {
-                    CopyRoutine = usbd_get_hid_descriptor;
-                }
-                else if (wValueHi == HID_REPORT_DESCRIPTOR)
-                {
-                    CopyRoutine = usb_relay_get_hid_report_descriptor;
-                }
-                break;
-            }
-            default:
-                return USB_UNSUPPORT;
-        }
-    }
-    else if (Type_Recipient == (CLASS_REQUEST | INTERFACE_RECIPIENT))
-    {
-
-        switch (request_no)
-        {
-            case HID_REQ_SET_REPORT:
-            {
-                CopyRoutine = usb_relay_set_report;
-            }
-            case HID_REQ_GET_REPORT:
-            {
-                CopyRoutine = usb_relay_get_report;
-            }
-            case CDC_GET_LINE_CODING:
-            {
-                //CopyRoutine = &USB_CDC_GetLineCoding;
-            }
-            case CDC_SET_LINE_CODING:
-            {
-                //CopyRoutine = &USB_CDC_SetLineCoding;
-            }
-            break;
-            default:
-                return USB_UNSUPPORT;
-        }
-    } else {
-    }
-
-    if (CopyRoutine)
-    {
-        pInformation->Ctrl_Info.CopyData = CopyRoutine;
-        pInformation->Ctrl_Info.Usb_wOffset = 0;
-        (*CopyRoutine)(0);
-        return USB_SUCCESS;
-    }
-    return USB_UNSUPPORT;
-}
-
-RESULT usb_relay_nodata_setup(uint8_t request_no)
-{      
-    uint32_t Request_No = pInformation->USBbRequest;
-    printf_usbd_debug("usb nodata request no %x\n\r", Request_No);
-
-    if (Type_Recipient == (CLASS_REQUEST | INTERFACE_RECIPIENT))
-    {
-        if (Request_No == CDC_SET_LINE_CTLSTE)
-        {
-            return USB_SUCCESS;
-        }
-        else if (Request_No == CDC_SEND_BREAK)
-        {
-            return USB_SUCCESS;
-        }
-        else if (Request_No == HID_SET_IDLE)
-        {
-            printf_usbd_debug("HID SET_IDLE: report_id=%d, idle_rate=%d\n\r", report_id, idle_rate);
-            return USB_SUCCESS;
-        }
-        else if (Request_No == HID_SET_PROTOCOL)
-        {
-            printf_usbd_debug("HID SET_PROTOCOL: protocol=%d\n\r", protocol);
-            return USB_SUCCESS;
-        }
-        else
-        {
-            return USB_UNSUPPORT;
-        }    
-    }             
+    pInformation->Ctrl_Info.CopyData = usb_relay_data_generic;
+    pInformation->Ctrl_Info.Usb_wOffset = 0;
+    pInformation->Ctrl_Info.Usb_wLength = pInformation->USBwLengths.w;
+    (*pInformation->Ctrl_Info.CopyData)(0);
     return USB_SUCCESS;
 }
 
-uint8_t *usb_relay_set_report(uint16_t length){
-    printf_usbd_debug("usb record type %d\r\n", pInformation->USBwValue1);
-    kb_set_report(0, ep0_size, pInformation->USBwIndex0);
-    return NULL;
+/**
+ * Handle USB no-data setup requests.
+ * @param request_no The USB request number.
+ * @return USB_SUCCESS on success, USB_UNSUPPORT otherwise.
+ */
+RESULT usb_relay_nodata_setup(uint8_t request_no)
+{      
+    uint32_t Request_No = pInformation->USBbRequest;
+    LOG_DEBUG("USB: usbr nodata request no %x, ty %x", Request_No, Type_Recipient);
+    usb_relay_nodata_generic();
+    return USB_SUCCESS;
 }
 
-uint8_t *usb_relay_get_report(uint16_t length){
-    printf_usbd_debug("usb GET REPORT type %d\r\n", pInformation->USBwValue1);
-    usbd_configured = TRUE;
-    return NULL;
+/**
+ * Handle generic no-data setup requests.
+ */
+void usb_relay_nodata_generic(void)
+{
+    USB_SETUP_REQ setup;
+    uint16_t plen = 0;
+
+    setup.bRequestType = pInformation->USBbmRequestType;
+    setup.bRequest = pInformation->USBbRequest;
+    setup.wValue = (uint16_t)(pInformation->USBwValues.bw.bb0 | (pInformation->USBwValues.bw.bb1 << 8));
+    setup.wIndex = (uint16_t)(pInformation->USBwIndexs.bw.bb0 | (pInformation->USBwIndexs.bw.bb1 << 8));
+    setup.wLength = pInformation->USBwLengths.w;
+
+    memcpy(pUSBFS_SetupRequest, &setup, sizeof(USB_SETUP_REQ));
+
+    if (USBFSH_CtrlTransfer(0, NULL, &plen) != ERR_SUCCESS)
+    {
+        LOG_DEBUG("USB: usbr control transfer (nodata) failed");
+    }
+    else
+    {
+        LOG_DEBUG("USB: usbr done control transfer (nodata)");
+    }
 }
 
+/**
+ * Handle generic USB data setup requests.
+ * @param length The length of data to transfer.
+ * @return Pointer to descriptor data.
+ */
+uint8_t *usb_relay_data_generic(uint16_t length)
+{
+    USB_SETUP_REQ setup;
+    uint8_t s;
+    bool is_out = !(pInformation->USBbmRequestType & 0x80); // OUT if direction bit is 0
+
+    ep0_size = RootHubDev.bEp0MaxPks;
+    pProperty->MaxPacketSize = ep0_size;
+
+    setup.bRequestType = pInformation->USBbmRequestType;
+    setup.bRequest = pInformation->USBbRequest;
+    setup.wValue = (uint16_t)(pInformation->USBwValues.bw.bb0 | (pInformation->USBwValues.bw.bb1 << 8));
+    setup.wIndex = (uint16_t)(pInformation->USBwIndexs.bw.bb0 | (pInformation->USBwIndexs.bw.bb1 << 8));
+    setup.wLength = pInformation->USBwLengths.w;
+
+    memcpy(pUSBFS_SetupRequest, &setup, sizeof(USB_SETUP_REQ));
+
+    //LOG_DEBUG("USB: usbr control transfer: type=%02x req=%02x val=%04x idx=%04x len=%04x cstate=%02x %s",
+    //                  setup.bRequestType, setup.bRequest, setup.wValue, setup.wIndex, setup.wLength, pInformation->ControlState,
+    //                  is_out ? "(OUT)" : "(IN)");
+
+
+    if (!is_out)
+    {
+        memset(Setup_Buf, 0, DEF_COM_BUF_LEN);
+        Setup_Buf_Len = setup.wLength;
+
+        if (!is_out)
+        {
+            s = USBFSH_CtrlTransfer(ep0_size, Setup_Buf, &Setup_Buf_Len);
+            if (s != ERR_SUCCESS)
+            {
+                LOG_DEBUG("USB: usbr IN control transfer failed: %d", s);
+                return NULL;
+            }
+        }
+    }
+    //LOG_DEBUG("USB: usbr after transfer: offset=%d Setup_Buf=", pInformation->Ctrl_Info.Usb_wOffset);
+    //for (uint32_t i = 0; i < (Setup_Buf_Len < 16 ? Setup_Buf_Len : 16); i++) 
+    //{
+    //    printf("%02x ", Setup_Buf[i]);
+    //}
+    //printf("\n\r");
+
+    // OUT: Return Setup_Buf for stack to copy PC data during DataStageOut
+    // IN: Return descriptor for stack to send to PC
+    if (is_out)
+    {
+        LOG_DEBUG("USB: usbr returning Setup_Buf for OUT data copy");
+        return Setup_Buf;
+    }
+    else
+    {
+        ONE_DESCRIPTOR Descriptor = {
+            .Descriptor = (uint8_t*)Setup_Buf,
+            .Descriptor_Size = Setup_Buf_Len
+        };
+        return Standard_GetDescriptorData(length, &Descriptor);
+    }
+}
+
+/**
+ * Get USB interface setting.
+ * @param Interface The interface number.
+ * @param AlternateSetting The alternate setting.
+ * @return Result of the interface setting check.
+ */
 RESULT usb_relay_get_interface_setting(uint8_t Interface, uint8_t AlternateSetting)
 {
     return usbd_get_interface_setting(Interface, AlternateSetting);
 }
 
-uint8_t *usb_relay_get_device_descriptor(uint16_t length)
-{
-    printf_usbd_debug("relay: device descriptor contents requested\n\r");
-    ep0_size = RootHubDev.bEp0MaxPks;
-    pProperty->MaxPacketSize = ep0_size;
-
-    USB_DeviceDescriptor *desc = (USB_DeviceDescriptor *)USBD_DeviceDescriptor;
-    desc->idProduct = pid;
-    desc->idVendor = vid;
-
-    ONE_DESCRIPTOR Device_Descriptor = {
-        .Descriptor = (uint8_t*)desc,
-        .Descriptor_Size = USBD_SIZE_DEVICE_DESC
-    };
-    return Standard_GetDescriptorData(length, (ONE_DESCRIPTOR*)&Device_Descriptor);
-}
-
-uint8_t *usb_relay_get_config_descriptor(uint16_t length)
-{
-    printf_usbd_debug("relay: configuration descriptor contents requested\n\r");
-
-    ONE_DESCRIPTOR Config_Descriptor = {
-        (uint8_t*)USBD_ConfigDescriptor,
-        USBD_ConfigDescSize
-    };
-    return Standard_GetDescriptorData(length, (ONE_DESCRIPTOR*)&Config_Descriptor);
-
-}
-
-uint8_t *usb_relay_get_string_descriptor(uint16_t length)
-{
-    uint8_t wValue0 = pInformation->USBwValue0;
-
-    //printf_usbd_debug("relay: string descriptor contents requested, wvalue=%u\n\r", wValue0);
-
-    ONE_DESCRIPTOR USB_StringDescriptor[4] = {
-        {USBD_StringDescriptor[0], USB_STRING_DESCRIPTOR_MAX_SIZE},
-        {USBD_StringDescriptor[1], USB_STRING_DESCRIPTOR_MAX_SIZE},
-        {USBD_StringDescriptor[2], USB_STRING_DESCRIPTOR_MAX_SIZE},
-        {USBD_StringDescriptor[3], USB_STRING_DESCRIPTOR_MAX_SIZE}
-    };
-    //printf_usbd_debug("string descriptor contents requested\n\r");
-    
-
-    if (wValue0 >= 4) {
-        return NULL;
-    }
-    return Standard_GetDescriptorData(length, &USB_StringDescriptor[wValue0]);
-}
-
-uint8_t *usb_relay_get_hid_report_descriptor(uint16_t length)
-{
-    //uint16_t descriptor_size = 0;
-
-    //printf_usbd_debug("hid: report descriptor contents requested\n\r");
-    //printf_usbd_debug("Length %d\n\r", length);
-
-    uint8_t num;
-    num = current_interface_num;
-    //descriptor_size = HostCtl[RootHubDev.DeviceIndex].Interface[num].HidDescLen;
-
-    //printf_usbd_debug("Get Interface%d ep0_size: %d, HidDescLen: %d \r\n", num, ep0_size, descriptor_size);
-
-    ONE_DESCRIPTOR Report_Descriptor = {
-        (uint8_t*)USBD_HIDReportDescriptor[num],
-        USBD_HIDReportDescSize
-    };
-    return Standard_GetDescriptorData(length, (ONE_DESCRIPTOR*)&Report_Descriptor);
-
-    return NULL;
-}
-
+/**
+ * Set USB configuration.
+ */
 void usb_relay_set_configuration(void)
 {
     DEVICE_INFO *pInfo = &Device_Info;
     uint8_t cfg;
 
-    printf("CONFIGURATION=%u\n\r", pInfo->Current_Configuration);
-    if (pInfo->Current_Configuration != 0)
+    cfg = ((USB_CFG_DESCR *)USBD_ConfigDescriptor)->bConfigurationValue;
+
+    if (USBFSH_SetUsbConfig(ep0_size, cfg) != ERR_SUCCESS)
     {
-        bDeviceState = CONFIGURED;
+        LOG_DEBUG("USB: usbr failed to set configuration");
+        return;
     }
 
-    printf_usbd_debug("relay: set configuration\n\r");
-
-    cfg = ((USB_CFG_DESCR *)USBD_ConfigDescriptor)->bConfigurationValue;
-    if(USBFSH_SetUsbConfig(ep0_size, cfg) != ERR_SUCCESS)
+    if (cfg != 0)
     {
-        printf_usbd_debug("relay: failed to set configuration\n\r");
-        return;
-    }    
-}
-
-void usb_relay_set_device_address(void)
-{
-    bDeviceState = ADDRESSED;
-    printf_usbd_debug("relay: set device address\n\r");
-
-    if(USBFSH_SetUsbAddress(ep0_size, 0 + USB_DEVICE_ADDR) == ERR_SUCCESS)
-    {
-        *paddr = 0 + USB_DEVICE_ADDR;
-    } else
-    {
-        printf_usbd_debug("relay: failed to set device address\n\r");
+        bDeviceState = CONFIGURED;
     }
 }
 
 void usb_relay_set_device_feature(void)
 {
-    
 }
-
 
 void usb_relay_clear_feature(void)
 {
-
 }

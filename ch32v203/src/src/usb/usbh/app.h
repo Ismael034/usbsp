@@ -39,14 +39,17 @@
 /*******************************************************************************/
 /* Variable Declaration */
 extern uint8_t  DevDesc_Buf[];                                         
-extern uint8_t  Com_Buf[];   
+extern uint8_t  Com_Buf[];
+extern uint8_t  Setup_Buf[];
+extern uint16_t Setup_Buf_Len;
+extern uint16_t Com_Buf_Len;
 
 /*******************************************************************************/
 /* Function Declaration */
 extern void tim3_init(uint16_t arr, uint16_t psc);
 extern void usbh_analyze_device_type(uint8_t *device_descriptor, uint8_t *config_descriptor, uint8_t *device_type);
 extern uint8_t usbh_enumerate_root_device(void);
-extern uint8_t km_analyze_config_descriptor(uint8_t host_index, uint8_t ep0_size);
+extern uint8_t app_analyze_config_descriptor(uint8_t host_index, uint8_t ep0_size);
 extern void km_analyze_hid_report_descriptor(uint8_t host_index, uint8_t interface_index);
 extern uint8_t km_deal_hid_report_descriptor(uint8_t host_index, uint8_t ep0_size);
 extern uint8_t usbh_enumerate_hid_device(uint8_t host_index, uint8_t ep0_size);
@@ -55,6 +58,7 @@ extern uint8_t hub_port_pre_enum1(uint8_t hub_port, uint8_t *buffer);
 extern uint8_t hub_port_pre_enum2(uint8_t hub_port, uint8_t *buffer);
 extern uint8_t hub_check_port_speed(uint8_t hub_port, uint8_t *buffer);
 extern uint8_t usbh_enumerate_hub_port_device(uint8_t hub_port, uint8_t *device_address, uint8_t *device_type);
+extern uint8_t usbh_get_string_descriptors(uint8_t ep0_size);
 extern void kb_analyze_key_value(uint8_t host_index, uint8_t interface_index, uint8_t *data_buffer, uint16_t data_length);
 extern uint8_t kb_set_report(uint8_t host_index, uint8_t ep0_size, uint8_t interface_index);
 extern void usbh_main_deal(void);
