@@ -123,7 +123,7 @@
 			(width 0)
 			(type default)
 		)
-		(uuid "af82534c-550c-4da2-af50-12fc032ce562")
+		(uuid "c9fcd24e-9ace-4365-b6d3-7c852755ad95")
 	)
 	(wire
 		(pts
@@ -259,9 +259,9 @@
 				(justify left)
 			)
 		)
-		(pin "GPIO_I2C_CTRL" input
-			(at 123.19 55.88 180)
-			(uuid "e67785ae-bc39-4c68-b1c8-2629fdbac3cd")
+		(pin "GPIO_RESERVED_1" input
+			(at 123.19 53.34 180)
+			(uuid "8c0b6133-1e7b-40f9-8c57-1c7980a28163")
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -269,9 +269,9 @@
 				(justify left)
 			)
 		)
-		(pin "GPIO_RESERVED_1" input
-			(at 123.19 53.34 180)
-			(uuid "a405bb02-ebea-4434-822c-ab10cfb5324b")
+		(pin "GPIO_I2C_CTRL" input
+			(at 123.19 55.88 180)
+			(uuid "c596fefd-24be-481b-bda5-b708b7b8e79a")
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -280,7 +280,7 @@
 			)
 		)
 		(instances
-			(project "usb_sp"
+			(project "usb_sp_dev"
 				(path "/0e6f0aa4-a0ff-4959-b558-a36c5faa29c6"
 					(page "1")
 				)
@@ -403,7 +403,7 @@
 		)
 		(pin "GPIO_I2C_CTRL" input
 			(at 102.87 55.88 0)
-			(uuid "4097b4c7-3194-44ae-85ec-bd4574095b50")
+			(uuid "3aeda0a0-1b94-4fc3-9a3f-d5f2e0122a40")
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -413,7 +413,7 @@
 		)
 		(pin "GPIO_RESERVED_1" input
 			(at 102.87 53.34 0)
-			(uuid "21a3fdf7-8562-4c79-a7b5-cb6329a6da67")
+			(uuid "023b118f-a46c-4c11-a0f8-6d884186515b")
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -422,7 +422,7 @@
 			)
 		)
 		(instances
-			(project "usb_sp"
+			(project "usb_sp_dev"
 				(path "/0e6f0aa4-a0ff-4959-b558-a36c5faa29c6"
 					(page "2")
 				)

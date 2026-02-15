@@ -1,0 +1,124 @@
+(footprint "TESTPOINT-SMD_L3.8-W2.0_RH-5019"
+	(version 20241229)
+	(generator "pcbnew")
+	(generator_version "9.0")
+	(layer "F.Cu")
+	(descr "TESTPOINT-SMD_L3.8-W2.0_RH-5019 footprint")
+	(tags "TESTPOINT-SMD_L3.8-W2.0_RH-5019 footprint C5199800")
+	(property "Reference" "REF**"
+		(at 0 -3.4 0)
+		(layer "F.SilkS")
+		(uuid "57d2dc2b-b1b4-42c7-a603-ed425bd8374f")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Value" "TESTPOINT-SMD_L3.8-W2.0_RH-5019"
+		(at 0 3.4 0)
+		(layer "F.Fab")
+		(uuid "e0f25d73-591f-442b-b624-45db32fe5412")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "54592e51-1a57-40ce-b5f0-2d79bcf09081")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "708c8d1b-3a9b-4967-8f6a-2924dff9d7b4")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.15)
+			)
+		)
+	)
+	(attr smd)
+	(fp_line
+		(start -2.3 -1.4)
+		(end -2.3 1.4)
+		(stroke
+			(width 0.254001)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "b363d52f-c211-4850-b856-79ab16804c81")
+	)
+	(fp_line
+		(start 2.3 -1.4)
+		(end -2.3 -1.4)
+		(stroke
+			(width 0.254001)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "30f63ff2-525f-4e7e-af8d-ba32686b964c")
+	)
+	(fp_line
+		(start 2.3 -1.4)
+		(end 2.3 1.4)
+		(stroke
+			(width 0.254001)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "eb0df26b-5346-42a2-9acc-f17f9f7404a1")
+	)
+	(fp_line
+		(start 2.3 1.4)
+		(end -2.3 1.4)
+		(stroke
+			(width 0.254001)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "d69e13ef-67a7-4311-81cf-d31ec0409af4")
+	)
+	(fp_text user "${REFERENCE}"
+		(at 0 0 0)
+		(layer "F.Fab")
+		(uuid "170e3230-2d24-4aaa-9b9e-3a7264823229")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(pad "1" smd rect
+		(at 0 0)
+		(size 4 2.2)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "ff0099fc-fed6-4dd4-9373-ae1a4927b4ac")
+	)
+	(embedded_fonts no)
+	(model "usb_sp_model_dev/TESTPOINT-SMD_L3.8-W2.0_RH-5019.step"
+		(offset
+			(xyz 0 0 0)
+		)
+		(scale
+			(xyz 1 1 1)
+		)
+		(rotate
+			(xyz 0 0 0)
+		)
+	)
+)

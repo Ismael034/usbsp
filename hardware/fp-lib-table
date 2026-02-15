@@ -1,4 +1,5 @@
 (fp_lib_table
   (version 7)
   (lib (name "usb_sp_fp")(type "KiCad")(uri "${KIPRJMOD}/usb_sp_fp")(options "")(descr ""))
+  (lib (name "usb_sp_fp_dev")(type "KiCad")(uri "${KIPRJMOD}/dev/usb_sp_fp_dev")(options "")(descr ""))
 )
