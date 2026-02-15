@@ -4426,20 +4426,12 @@
 		(uuid "a69cef4b-7f35-4f37-88a4-b270b6e2fc91")
 	)
 	(no_connect
-		(at 311.15 218.44)
-		(uuid "a9611edb-7076-4d00-b118-69fbc8436ee8")
-	)
-	(no_connect
 		(at 364.49 226.06)
 		(uuid "b16bd362-4452-45bd-976a-b9a2a6e7d5f7")
 	)
 	(no_connect
 		(at 35.56 187.96)
 		(uuid "b48cfefd-1d08-42e2-a1b3-a669bd656ba7")
-	)
-	(no_connect
-		(at 311.15 215.9)
-		(uuid "cb04e678-a479-4799-9701-46405c5282ef")
 	)
 	(no_connect
 		(at 311.15 175.26)
@@ -5226,6 +5218,16 @@
 			(type default)
 		)
 		(uuid "75355221-369b-4a16-bb0d-f8711765cd1f")
+	)
+	(wire
+		(pts
+			(xy 294.64 215.9) (xy 311.15 215.9)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "7674d5c5-e62c-4db2-9992-2911b46fcc4d")
 	)
 	(wire
 		(pts
@@ -6417,6 +6419,16 @@
 		)
 		(uuid "fb34bc59-4df3-4fe4-87bc-e18c9f0daec8")
 	)
+	(wire
+		(pts
+			(xy 294.64 218.44) (xy 311.15 218.44)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "ffdc32d4-fa5f-4c78-80c8-6e68ef4c603e")
+	)
 	(label "DP2_OUT"
 		(at 349.25 85.09 0)
 		(effects
@@ -7154,6 +7166,17 @@
 		)
 		(uuid "28f27ab9-0179-4c86-94b6-46516666f193")
 	)
+	(hierarchical_label "GPIO_I2C_CTRL"
+		(shape input)
+		(at 294.64 215.9 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "33d9ad30-d516-4016-b537-9fb715b6914e")
+	)
 	(hierarchical_label "GPIO_RST_CH32"
 		(shape input)
 		(at 153.67 181.61 180)
@@ -7208,6 +7231,17 @@
 			(justify left)
 		)
 		(uuid "99f92142-f54d-4063-bb2c-b228c5fd16d1")
+	)
+	(hierarchical_label "GPIO_RESERVED_1"
+		(shape input)
+		(at 294.64 218.44 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "ac900b58-fa99-47a2-b4e1-0658f2131100")
 	)
 	(hierarchical_label "SPI_MOSI"
 		(shape input)
