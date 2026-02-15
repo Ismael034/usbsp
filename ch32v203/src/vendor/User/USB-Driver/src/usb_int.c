@@ -9,6 +9,7 @@
 * Attention: This software (modified or not) and binary are used for 
 * microcontroller manufactured by Nanjing Qinheng Microelectronics.
 *******************************************************************************/ 
+#include "relay.h"
 #include "usb_lib.h"
 
 /* Private variables */
@@ -61,7 +62,7 @@ void CTR_LP(void)
           _ClearEP_CTR_RX(ENDP0);
           Setup0_Process();
 		      _SetEPRxTxStatus(ENDP0,SaveRState,SaveTState);
-					
+
           return;
         }
         else if ((wEPVal & EP_CTR_RX) != 0)

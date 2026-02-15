@@ -26,6 +26,7 @@
 
 typedef struct _ep_config {
     uint8_t ep_num;
+    uint8_t is_ep_in;
     uint16_t ep_type;
 
     uint16_t ep_tx_status;
@@ -61,5 +62,6 @@ RESULT usbd_nodata_setup(uint8_t);
 RESULT usbd_get_interface_setting(uint8_t Interface, uint8_t AlternateSetting);
 
 uint8_t USBD_ENDP_DataUp( uint8_t endp, uint8_t *pbuf, uint16_t len );
+uint8_t UDBD_ENDP_Busy(uint16_t endpoint);
 
 #endif /* __usb_prop_H */

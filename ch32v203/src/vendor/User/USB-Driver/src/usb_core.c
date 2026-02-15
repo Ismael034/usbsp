@@ -9,6 +9,7 @@
 * Attention: This software (modified or not) and binary are used for 
 * microcontroller manufactured by Nanjing Qinheng Microelectronics.
 *******************************************************************************/ 
+#include "relay.h"
 #include "usb_lib.h"
 
 /* Global define */
@@ -430,6 +431,7 @@ void DataStageOut(void)
     pEPinfo->Usb_rLength -= Length;
     pEPinfo->Usb_rOffset += Length;
     PMAToUserBufferCopy(Buffer, GetEPRxAddr(ENDP0), Length);
+    
   }
 
   if (pEPinfo->Usb_rLength != 0)
@@ -647,15 +649,15 @@ void Data_Setup0(void)
     if (Type_Recipient == (STANDARD_REQUEST | DEVICE_RECIPIENT))
     {
       uint8_t wValue1 = pInformation->USBwValue1;
-      if (wValue1 == DEVICE_DESCRIPTOR)
+      if (wValue1 == USB_DEVICE_DESCRIPTOR)
       {
         CopyRoutine = pProperty->GetDeviceDescriptor;
       }
-      else if (wValue1 == CONFIG_DESCRIPTOR)
+      else if (wValue1 == USB_CONFIG_DESCRIPTOR)
       {
         CopyRoutine = pProperty->GetConfigDescriptor;
       }
-      else if (wValue1 == STRING_DESCRIPTOR)
+      else if (wValue1 == USB_STRING_DESCRIPTOR)
       {
         CopyRoutine = pProperty->GetStringDescriptor;
       } 

@@ -1,4 +1,5 @@
 #include "usb_prop.h"
+#include "debug_log.h"
 
 usb_state_t usb_state;
 extern uint8_t USBD_Endp_Busy[MAX_USB_IN_ENDPOINTS];
@@ -12,10 +13,10 @@ void usbd_init(void)
 
     for (uint8_t i = 0; i < 8; i++)
     {
-        _SetENDPOINT(i,_GetENDPOINT(i) & 0x7F7F & EPREG_MASK);//all clear
+        _SetENDPOINT(i,_GetENDPOINT(i) & 0x7F7F & EPREG_MASK); //all clear
     }
-    _SetISTR((uint16_t)0x00FF);//all clear
-    USB_SIL_Init(IMR_MSK); // Initialize the USB Software Interface Layer
+    _SetISTR((uint16_t)0x00FF); //all clear
+    USB_SIL_Init(IMR_MSK); // initialize the USB Software Interface Layer
     
     bDeviceState = UNCONNECTED;
     
@@ -23,7 +24,7 @@ void usbd_init(void)
     Delay_Ms(20);
     usb_hw_set_port(ENABLE, ENABLE);
 
-    printf_usbd_debug("initialization complete\n\r");
+    LOG_INFO("USB: Initialization complete");
 }
 
 void usbd_reset(void)
@@ -35,7 +36,7 @@ void usbd_reset(void)
     SetBTABLE(BTABLE_ADDRESS);
 
     SetEPType(ENDP0, EP_CONTROL);
-    SetEPTxStatus(ENDP0, EP_TX_STALL);
+    SetEPTxStatus(ENDP0, EP_TX_NAK);
     SetEPRxAddr(ENDP0, ENDP0_RXADDR);
     SetEPTxAddr(ENDP0, ENDP0_TXADDR);
     Clear_Status_Out(ENDP0);
@@ -52,59 +53,57 @@ void usbd_reset(void)
     SetDeviceAddress(0);
     bDeviceState = ATTACHED;
 
-    printf_usbd_debug("usb reset\n\r");
+    LOG_DEBUG("USB: usbd reset");
 }
 
 
-void usbd_set_endpoint_config(ep_config *ep_config, uint8_t endpoints) {
+void usbd_set_endpoint_config(ep_config *ep_config, uint8_t endpoints)
+{
+    LOG_DEBUG("Configuring %d endpoints", endpoints);
+
     for (uint8_t i = 0; i < endpoints; i++) {
-        uint8_t ep_num  = ep_config[i].ep_num;
-        uint16_t ep_type = ep_config[i].ep_type;
+        uint8_t ep_addr = ep_config[i].ep_num;         // full addr (0x81 etc)
+        uint8_t ep_idx  = ep_addr & 0x0F;              // numeric index (0..)
+        uint8_t is_in   = ep_config[i].is_ep_in;
 
-        SetEPType(ep_num, ep_type);
+        SetEPType(ep_idx, ep_config[i].ep_type);
 
-        // Configure TX
-        if (ep_config[i].ep_tx_addr != 0xFFFF) {
-            SetEPTxAddr(ep_num, ep_config[i].ep_tx_addr);
-        }
-        if (ep_config[i].ep_tx_status != 0xFFFF) {
-            SetEPTxStatus(ep_num, ep_config[i].ep_tx_status);
-        }
-        if (ep_config[i].ep_tx_count != 0xFFFF) {
-            SetEPTxCount(ep_num, ep_config[i].ep_tx_count);
+        if (is_in == 0) {
+            //printf("    IN ep_ep_idx=%d ep_addr=%d, type=%d, ep_rx_count=%d\n\r", ep_idx, ep_addr, ep_config[i].ep_type, ep_config[i].ep_rx_count);
+            // IN endpoint: set TX registers
+            SetEPTxAddr(ep_idx, ep_config[i].ep_tx_addr);
+            SetEPTxCount(ep_idx, ep_config[i].ep_tx_count);
+            SetEPTxStatus(ep_idx, ep_config[i].ep_tx_status);
+            // If user provided RX registers for a bi-directional EP, set them too:
+            SetEPRxAddr(ep_idx, ep_config[i].ep_rx_addr);
+            SetEPRxCount(ep_idx, ep_config[i].ep_rx_count);
+            SetEPRxStatus(ep_idx, ep_config[i].ep_rx_status);
+        } else {
+            printf("    OUT ep_ep_idx=%d ep_addr=%d, type=%d, ep_rx_count=%d\n\r", ep_idx, ep_addr, ep_config[i].ep_type, ep_config[i].ep_rx_count);
+            // OUT endpoint: set RX registers
+            SetEPRxAddr(ep_idx, ep_config[i].ep_rx_addr);
+            SetEPRxCount(ep_idx, ep_config[i].ep_rx_count);
+            SetEPRxStatus(ep_idx, ep_config[i].ep_rx_status);
+            // If user provided TX registers for a bi-directional EP, set them too:
+            SetEPTxAddr(ep_idx, ep_config[i].ep_tx_addr);
+            SetEPTxCount(ep_idx, ep_config[i].ep_tx_count);
+            SetEPTxStatus(ep_idx, ep_config[i].ep_tx_status);
         }
 
-        // Configure RX
-        if (ep_config[i].ep_rx_addr != 0xFFFF) {
-            SetEPRxAddr(ep_num, ep_config[i].ep_rx_addr);
-        }
-        if (ep_config[i].ep_rx_count != 0xFFFF) {
-            SetEPRxCount(ep_num, ep_config[i].ep_rx_count);
-        }
-        if (ep_config[i].ep_rx_status != 0xFFFF) {
-            SetEPRxStatus(ep_num, ep_config[i].ep_rx_status);
-        }
-        _ClearDTOG_TX(ep_num);
-        _ClearDTOG_RX(ep_num);
+        _ClearDTOG_TX(ep_idx);
+        _ClearDTOG_RX(ep_idx);
     }
 }
+
 
 void usbd_status_in(void)
 {
-    uint32_t Request_No = pInformation->USBbRequest;
-    if (Type_Recipient == (CLASS_REQUEST | INTERFACE_RECIPIENT))
-    {
-        printf_usbd_debug("usb inserted\n\r");
-        if (Request_No == CDC_SET_LINE_CODING)
-        {
-            printf("usbd: Line coding request");
-        }
-    }
+    LOG_DEBUG("USB: usbd inserted (in)");
 }
 
 void usbd_status_out(void)
 {
-    printf_usbd_debug("usb removed\n\r");
+    LOG_DEBUG("USB: usbd removed (out)");
 
 }
 
@@ -113,7 +112,7 @@ RESULT usbd_data_setup(uint8_t request_no)
     uint32_t Request_No = pInformation->USBbRequest;
     uint8_t *(*CopyRoutine)(uint16_t) = NULL;
 
-    printf_usbd_debug("usb data request no %x\n\r", Request_No);
+    LOG_DEBUG("USB: usbd data request no %x", Request_No);
 
     if (Type_Recipient == (STANDARD_REQUEST | DEVICE_RECIPIENT) ||
         Type_Recipient == (STANDARD_REQUEST | INTERFACE_RECIPIENT) ||
@@ -125,48 +124,24 @@ RESULT usbd_data_setup(uint8_t request_no)
             {
                 uint8_t wValueHi = pInformation->USBwValue1;
 
-                printf_usbd_debug("usb data request %x\n\r", wValueHi);
+                LOG_DEBUG("USB: usbd data request %x", wValueHi);
 
-                if (wValueHi == DEVICE_DESCRIPTOR)
+                if (wValueHi == USB_DEVICE_DESCRIPTOR)
                 {
                     CopyRoutine = usbd_get_device_descriptor;
                 }
-                else if (wValueHi == CONFIG_DESCRIPTOR)
+                else if (wValueHi == USB_CONFIG_DESCRIPTOR)
                 {
                     CopyRoutine = usbd_get_config_descriptor;
                 }
-                else if (wValueHi == STRING_DESCRIPTOR)
+                else if (wValueHi == USB_STRING_DESCRIPTOR)
                 {
                     CopyRoutine = usbd_get_string_descriptor;
-                }
-                else if (wValueHi == HID_DESCRIPTOR) 
-                {
-                    CopyRoutine = usbd_get_hid_descriptor;
-                }
-                else if (wValueHi == HID_REPORT_DESCRIPTOR)
-                {
-                    CopyRoutine = usbd_get_hid_report_descriptor;
                 }
                 break;
             }
             default:
                 return USB_UNSUPPORT;
-        }
-    }
-    else if (Type_Recipient == (CLASS_REQUEST | INTERFACE_RECIPIENT))
-    {
-        // Existing CDC logic
-        if (Request_No == CDC_GET_LINE_CODING)
-        {
-            //CopyRoutine = &USB_CDC_GetLineCoding;
-        }
-        else if (Request_No == CDC_SET_LINE_CODING)
-        {
-            //CopyRoutine = &USB_CDC_SetLineCoding;
-        }
-        else
-        {
-            return USB_UNSUPPORT;
         }
     }
 
@@ -183,33 +158,7 @@ RESULT usbd_data_setup(uint8_t request_no)
 RESULT usbd_nodata_setup(uint8_t RequestNo)
 {      
     uint32_t Request_No = pInformation->USBbRequest;
-    printf_usbd_debug("usb nodata request no %x\n\r", Request_No);
-
-    if (Type_Recipient == (CLASS_REQUEST | INTERFACE_RECIPIENT))
-    {
-        if (Request_No == CDC_SET_LINE_CTLSTE)
-        {
-            return USB_SUCCESS;
-        }
-        else if (Request_No == CDC_SEND_BREAK)
-        {
-            return USB_SUCCESS;
-        }
-        else if (Request_No == HID_SET_IDLE)
-        {
-            printf_usbd_debug("HID SET_IDLE: report_id=%d, idle_rate=%d\n\r", report_id, idle_rate);
-            return USB_SUCCESS;
-        }
-        else if (Request_No == HID_SET_PROTOCOL)
-        {
-            printf_usbd_debug("HID SET_PROTOCOL: protocol=%d\n\r", protocol);
-            return USB_SUCCESS;
-        }
-        else
-        {
-            return USB_UNSUPPORT;
-        }    
-    }             
+    LOG_DEBUG("USB: usbd nodata request no %x", Request_No);         
     return USB_SUCCESS;
 }
 
@@ -233,7 +182,7 @@ uint8_t *usbd_get_device_descriptor(uint16_t length)
         .Descriptor = (uint8_t*)USBD_DeviceDescriptor,
         .Descriptor_Size = USBD_SIZE_DEVICE_DESC
     };
-    printf_usbd_debug("device descriptor contents requested\n\r");
+    LOG_DEBUG("USB: usbd device descriptor contents requested");
     return Standard_GetDescriptorData(length, (ONE_DESCRIPTOR*)&Device_Descriptor);
 }
 
@@ -245,7 +194,7 @@ uint8_t *usbd_get_config_descriptor(uint16_t Length)
         USBD_ConfigDescSize
     };
 
-    printf_usbd_debug("config descriptor contents requested\n\r");
+    LOG_DEBUG("USB: usbd config descriptor contents requested");
     return Standard_GetDescriptorData(Length, &Config_Descriptor);
 }
 
@@ -257,7 +206,7 @@ uint8_t *usbd_get_string_descriptor(uint16_t length)
         {(uint8_t*)USBD_StringProduct, USBD_StringProductSize},
         {(uint8_t*)USBD_StringSerial, USBD_StringSerialSize}
     };
-    printf_usbd_debug("string descriptor contents requested\n\r");
+    LOG_DEBUG("USB: usbd string descriptor contents requested");
     uint8_t wValue0 = pInformation->USBwValue0;
 
     if (wValue0 >= 4) {
@@ -265,23 +214,6 @@ uint8_t *usbd_get_string_descriptor(uint16_t length)
     }
 
     return Standard_GetDescriptorData(length, &USBD_StringDescriptor[wValue0]);
-}
-
-uint8_t *usbd_get_hid_descriptor(uint16_t length)
-{
-    printf_usbd_debug("hid descriptor contents requested\n\r");
-    return Standard_GetDescriptorData(length, NULL);
-}
-
-
-uint8_t *usbd_get_hid_report_descriptor(uint16_t length)
-{
-    ONE_DESCRIPTOR Report_Descriptor = {
-        (uint8_t*)USBD_HIDReportDescriptor,
-        USBD_HIDReportDescSize
-    };
-    printf_usbd_debug("hid report descriptor contents requested\n\r"); 
-    return Standard_GetDescriptorData(length, &Report_Descriptor);
 }
 
 void usbd_set_configuration(void)

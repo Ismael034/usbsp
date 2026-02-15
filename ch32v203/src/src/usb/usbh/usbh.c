@@ -447,6 +447,46 @@ uint8_t USBFSH_GetDeviceDescr( uint8_t *pep0_size, uint8_t *pbuf )
     return ERR_SUCCESS;
 }
 
+/** 
+ * Get BOS descriptor (two-stage read). 
+ * ep0_size: endpoint0 max packet size (from device descriptor)
+ * pbuf: buffer to store BOS descriptor
+ * buf_len: length of pbuf
+ * pbos_len: actual length read (out)
+ */
+uint8_t USBFSH_GetBOSDescr(uint8_t ep0_size, uint8_t *pbuf, uint16_t buf_len, uint16_t *pbos_len)
+{
+    uint8_t status;
+    uint16_t len;
+
+    memcpy(pUSBFS_SetupRequest, SetupGetBosDesc, sizeof(USB_SETUP_REQ));
+    
+    status = USBFSH_CtrlTransfer(ep0_size, pbuf, &len);
+    if (status != ERR_SUCCESS) {
+        return status;  /* BOS not supported or STALLed */
+    }
+    if (len < 5) {
+        return ERR_USB_TRANSFER;  /* invalid header */
+    }
+
+    uint16_t total_len = (uint16_t)pbuf[2] | ((uint16_t)pbuf[3] << 8);
+    if (total_len == 0 || total_len > buf_len) {
+        total_len = buf_len;
+    }
+
+    memcpy(pUSBFS_SetupRequest, SetupGetBosDesc, sizeof(USB_SETUP_REQ));
+    pUSBFS_SetupRequest->wLength = total_len;
+
+    status = USBFSH_CtrlTransfer(ep0_size, pbuf, &len);
+    if (status == ERR_SUCCESS) {
+        *pbos_len = total_len;
+    } else {
+        *pbos_len = 0;
+    }
+
+    return status;
+}
+
 /*********************************************************************
  * @fn      USBFSH_GetConfigDescr
  *
@@ -584,6 +624,13 @@ uint8_t USBFSH_ClearEndpStall( uint8_t ep0_size, uint8_t endp_num )
     return USBFSH_CtrlTransfer( ep0_size, NULL, NULL );
 }
 
+uint8_t CheckUSBDataAvailable(uint8_t endp_num) {
+    if (USBFSH->RX_LEN > 0) { // Data is available
+        return 0;
+    }
+    return 2; // Custom error code for no data
+}
+
 /*********************************************************************
  * @fn      USBFSH_GetEndpData
  *
@@ -637,4 +684,30 @@ uint8_t USBFSH_SendEndpData( uint8_t endp_num, uint8_t *pendp_tog, uint8_t *pbuf
     }
 
     return s;
+}
+
+
+uint8_t USBFSH_SendEndpDataLarge(uint8_t endp_num, uint8_t *pendp_tog, uint8_t *pbuf, uint16_t total_len)
+{
+    uint8_t status;
+    uint16_t offset = 0;
+
+    while (total_len > 0)
+    {
+        uint16_t pkt_len = (total_len > 64) ? 64 : total_len;
+
+        memcpy(USBFS_TX_Buf, pbuf + offset, pkt_len);
+        USBFSH->HOST_TX_LEN = pkt_len;
+
+        status = USBFSH_Transact((USB_PID_OUT << 4) | endp_num, *pendp_tog, 0);
+        if (status != ERR_SUCCESS)
+            return status;
+
+        *pendp_tog ^= USBFS_UH_T_TOG;   // toggle DATA0/DATA1
+
+        offset += pkt_len;
+        total_len -= pkt_len;
+    }
+
+    return ERR_SUCCESS;
 }

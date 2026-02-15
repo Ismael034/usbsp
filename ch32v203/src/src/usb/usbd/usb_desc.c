@@ -4,8 +4,9 @@
 
 /* USB Descriptor Arrays and Sizes */
 uint8_t USBD_DeviceDescriptor[USBD_SIZE_DEVICE_DESC];
+uint8_t *USBD_BOSDescriptor = NULL;
 uint8_t *USBD_ConfigDescriptor = NULL;
-uint8_t *USBD_StringDescriptor[4];
+USBD_StringDescriptor_s USBD_StringDescriptor[4];
 uint8_t *USBD_HIDDescriptor = NULL;
 uint8_t *USBD_HIDReportDescriptor[MAX_USB_INTERFACES];
 
@@ -16,6 +17,7 @@ uint8_t *USBD_StringSerial = NULL;
 
 
 uint16_t USBD_ConfigDescSize = 0;
+uint16_t USBD_BOSDescSize = 0;
 uint8_t USBD_StringVendorSize = 0;
 uint8_t USBD_StringProductSize = 0;
 uint8_t USBD_StringSerialSize = 0;

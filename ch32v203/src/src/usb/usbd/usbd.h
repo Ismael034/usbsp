@@ -8,18 +8,12 @@
 #include "usb_prop.h"
 #include "usb_istr.h"
 
-#ifdef USB_DEBUG
-    #define printf_usbd_debug(...) printf("usbd debug: " __VA_ARGS__)
-#else
-    #define printf_usbd_debug(...)
-#endif
-
 /* ISTR events */
 /* IMR_MSK */
 /* mask defining which events has to be handled */
 /* by the device application software */
 #define IMR_MSK (CNTR_CTRM  | CNTR_WKUPM | CNTR_SUSPM | CNTR_ERRM  | CNTR_SOFM \
-                 | CNTR_ESOFM | CNTR_RESETM )
+                 | CNTR_ESOFM | CNTR_RESETM | ISTR_DOVR)
 
 #define EP_NUM                          (15)
 
@@ -61,17 +55,17 @@
 // #define  EP2_IN_Callback   NOP_Process
 // #define  EP3_IN_Callback   NOP_Process
 // #define  EP4_IN_Callback   NOP_Process
-#define  EP5_IN_Callback   NOP_Process
-#define  EP6_IN_Callback   NOP_Process
-#define  EP7_IN_Callback   NOP_Process
+// #define  EP5_IN_Callback   NOP_Process
+// #define  EP6_IN_Callback   NOP_Process
+// #define  EP7_IN_Callback   NOP_Process
 
 // #define  EP1_OUT_Callback   NOP_Process
 // #define  EP2_OUT_Callback   NOP_Process
 // #define  EP3_OUT_Callback   NOP_Process
 // #define  EP4_OUT_Callback   NOP_Process
-#define  EP5_OUT_Callback   NOP_Process
-#define  EP6_OUT_Callback   NOP_Process
-#define  EP7_OUT_Callback   NOP_Process
+// #define  EP5_OUT_Callback   NOP_Process
+// #define  EP6_OUT_Callback   NOP_Process
+// #define  EP7_OUT_Callback   NOP_Process
 
 void usbd_driver_init(void);
 

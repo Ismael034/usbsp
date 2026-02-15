@@ -33,6 +33,7 @@
 
 /* Configuration Descriptor Type */
 #define DEF_DECR_CONFIG             0x02
+#define DEF_DECR_STRING             0x03
 #define DEF_DECR_INTERFACE          0x04
 #define DEF_DECR_ENDPOINT           0x05
 #define DEF_DECR_HID                0x21
@@ -111,6 +112,7 @@ typedef struct __HOST_CTL
         uint8_t  InEndpTog[ 4 ];
         uint8_t  InEndpInterval[ 4 ];
         uint8_t  InEndpTimeCount[ 4 ];
+        uint32_t  LastInPollTime [ 4 ];
 
         uint8_t  OutEndpNum;
         uint8_t  OutEndpAddr[ 4 ];
