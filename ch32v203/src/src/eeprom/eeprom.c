@@ -1,11 +1,222 @@
 #include "debug.h"
 #include "debug_log.h"
 #include "eeprom.h"
+#include "external/microtlv/tlv.h"
 #include <stdlib.h>
 #include <string.h>
 
 uint16_t vid = 0;
 uint16_t pid = 0;
+
+#define EEPROM_TOTAL_SIZE        256u
+#define TLV_TYPE_VID             0x01u
+#define TLV_TYPE_PID             0x02u
+#define TLV_TYPE_BCD_DEVICE      0x03u
+#define TLV_TYPE_MAX_POWER_MA    0x04u
+#define TLV_TYPE_FLAGS           0x05u
+#define TLV_TYPE_ATTACH_DELAY_MS 0x06u
+#define TLV_TYPE_CAPTURE_MAX_B   0x07u
+#define TLV_TYPE_MANUFACTURER    0x08u
+#define TLV_TYPE_PRODUCT         0x09u
+#define TLV_TYPE_SERIAL          0x0Au
+
+#define TLV_FLAG_SELF_POWERED    (1u << 0)
+#define TLV_FLAG_REMOTE_WAKEUP   (1u << 1)
+#define TLV_FLAG_BOOT_CONNECTED  (1u << 2)
+#define TLV_FLAG_CAPTURE_ON_BOOT (1u << 3)
+
+#define TLV_TEXT_MAX_LEN         60u
+
+typedef struct
+{
+    uint8_t parsed;
+    uint8_t record_count;
+    uint8_t unknown_count;
+    uint8_t has_vid;
+    uint8_t has_pid;
+    uint8_t has_bcd_device;
+    uint8_t has_max_power_ma;
+    uint8_t has_flags;
+    uint8_t has_attach_delay_ms;
+    uint8_t has_capture_max_bytes;
+    uint8_t has_manufacturer;
+    uint8_t has_product;
+    uint8_t has_serial;
+    uint16_t vid;
+    uint16_t pid;
+    uint16_t bcd_device;
+    uint16_t max_power_ma;
+    uint8_t flags;
+    uint16_t attach_delay_ms;
+    uint16_t capture_max_bytes;
+    char manufacturer[TLV_TEXT_MAX_LEN + 1];
+    char product[TLV_TEXT_MAX_LEN + 1];
+    char serial[TLV_TEXT_MAX_LEN + 1];
+} eeprom_tlv_info_t;
+
+static void tlv_copy_text(char *dst, uint16_t dst_len, const uint8_t *src, uint16_t src_len)
+{
+    uint16_t i = 0;
+
+    if (!dst || dst_len == 0u) {
+        return;
+    }
+
+    if (!src) {
+        dst[0] = '\0';
+        return;
+    }
+
+    while (i < src_len && (i + 1u) < dst_len && src[i] != '\0') {
+        dst[i] = (char)src[i];
+        i++;
+    }
+    dst[i] = '\0';
+}
+
+static uint16_t tlv_u16_le(const uint8_t *value)
+{
+    return (uint16_t)(((uint16_t)value[0]) | ((uint16_t)value[1] << 8));
+}
+
+static uint8_t eeprom_parse_tlv(const uint8_t *raw, uint16_t raw_len, eeprom_tlv_info_t *info)
+{
+    uint8_t *p = (uint8_t *)raw;
+    uint32_t left = raw_len;
+    uint8_t saw_terminator_or_erased_tail = 0;
+    uint8_t seen_known_field = 0;
+
+    if (!raw || !info) {
+        return 1;
+    }
+
+    memset(info, 0, sizeof(*info));
+
+    while (left > 0u) {
+        uint32_t type = 0;
+        uint32_t length = 0;
+        uint8_t *value = 0;
+        int rc;
+
+        if (p[0] == 0xFFu) {
+            saw_terminator_or_erased_tail = 1;
+            break;
+        }
+
+        rc = tlv_parse(&p, &left, &type, &length, &value);
+        if (rc != TLV_RESULT_SUCCESS) {
+            return 1;
+        }
+        if (type == 0u && length == 0u) {
+            saw_terminator_or_erased_tail = 1;
+            break;
+        }
+        info->record_count++;
+
+        switch (type) {
+            case TLV_TYPE_VID:
+                if (length >= 2u) {
+                    info->vid = tlv_u16_le(value);
+                    info->has_vid = 1;
+                    seen_known_field = 1;
+                }
+                break;
+            case TLV_TYPE_PID:
+                if (length >= 2u) {
+                    info->pid = tlv_u16_le(value);
+                    info->has_pid = 1;
+                    seen_known_field = 1;
+                }
+                break;
+            case TLV_TYPE_BCD_DEVICE:
+                if (length >= 2u) {
+                    info->bcd_device = tlv_u16_le(value);
+                    info->has_bcd_device = 1;
+                    seen_known_field = 1;
+                }
+                break;
+            case TLV_TYPE_MAX_POWER_MA:
+                if (length >= 2u) {
+                    info->max_power_ma = tlv_u16_le(value);
+                    info->has_max_power_ma = 1;
+                    seen_known_field = 1;
+                }
+                break;
+            case TLV_TYPE_FLAGS:
+                if (length >= 1u) {
+                    info->flags = value[0];
+                    info->has_flags = 1;
+                    seen_known_field = 1;
+                }
+                break;
+            case TLV_TYPE_ATTACH_DELAY_MS:
+                if (length >= 2u) {
+                    info->attach_delay_ms = tlv_u16_le(value);
+                    info->has_attach_delay_ms = 1;
+                    seen_known_field = 1;
+                }
+                break;
+            case TLV_TYPE_CAPTURE_MAX_B:
+                if (length >= 2u) {
+                    info->capture_max_bytes = tlv_u16_le(value);
+                    info->has_capture_max_bytes = 1;
+                    seen_known_field = 1;
+                }
+                break;
+            case TLV_TYPE_MANUFACTURER:
+                tlv_copy_text(info->manufacturer, (uint16_t)sizeof(info->manufacturer), value, (uint16_t)length);
+                info->has_manufacturer = 1;
+                seen_known_field = 1;
+                break;
+            case TLV_TYPE_PRODUCT:
+                tlv_copy_text(info->product, (uint16_t)sizeof(info->product), value, (uint16_t)length);
+                info->has_product = 1;
+                seen_known_field = 1;
+                break;
+            case TLV_TYPE_SERIAL:
+                tlv_copy_text(info->serial, (uint16_t)sizeof(info->serial), value, (uint16_t)length);
+                info->has_serial = 1;
+                seen_known_field = 1;
+                break;
+            default:
+                info->unknown_count++;
+                break;
+        }
+    }
+
+    if (!saw_terminator_or_erased_tail || !seen_known_field) {
+        return 1;
+    }
+
+    info->parsed = 1;
+    return 0;
+}
+
+static void log_parsed_eeprom_tlv(const eeprom_tlv_info_t *info)
+{
+    if (!info) {
+        return;
+    }
+
+    LOG_INFO("EEPROM TLV: records=%u unknown=%u", info->record_count, info->unknown_count);
+    if (info->has_vid) LOG_INFO("EEPROM TLV: vid=0x%04X (%u)", info->vid, info->vid);
+    if (info->has_pid) LOG_INFO("EEPROM TLV: pid=0x%04X (%u)", info->pid, info->pid);
+    if (info->has_bcd_device) LOG_INFO("EEPROM TLV: bcdDevice=0x%04X", info->bcd_device);
+    if (info->has_max_power_ma) LOG_INFO("EEPROM TLV: maxPowerMa=%u", info->max_power_ma);
+    if (info->has_flags) {
+        LOG_INFO("EEPROM TLV: flags=0x%02X", info->flags);
+        LOG_INFO("EEPROM TLV: selfPowered=%u remoteWakeup=%u bootConnected=%u captureOnBoot=%u",
+                 (info->flags & TLV_FLAG_SELF_POWERED) ? 1u : 0u,
+                 (info->flags & TLV_FLAG_REMOTE_WAKEUP) ? 1u : 0u,
+                 (info->flags & TLV_FLAG_BOOT_CONNECTED) ? 1u : 0u,
+                 (info->flags & TLV_FLAG_CAPTURE_ON_BOOT) ? 1u : 0u);
+    }
+    if (info->has_attach_delay_ms) LOG_INFO("EEPROM TLV: attachDelayMs=%u", info->attach_delay_ms);
+    if (info->has_capture_max_bytes) LOG_INFO("EEPROM TLV: captureMaxBytes=%u", info->capture_max_bytes);
+    if (info->has_manufacturer) LOG_INFO("EEPROM TLV: manufacturer=\"%s\"", info->manufacturer);
+    if (info->has_product) LOG_INFO("EEPROM TLV: product=\"%s\"", info->product);
+    if (info->has_serial) LOG_INFO("EEPROM TLV: serial=\"%s\"", info->serial);
+}
 
 /*********************************************************************
  * @fn      i2c_init
@@ -239,17 +450,27 @@ void AT24C02_write(uint16_t write_address, uint8_t *buffer, uint16_t num_to_writ
  */
 void AT24C02_read_usb_info()
 {
-    uint8_t buffer[4];
+    uint8_t raw[EEPROM_TOTAL_SIZE];
+    eeprom_tlv_info_t info;
 
-    // Read 4 bytes from EEPROM (VID @ 0x00, PID @ 0x02)
-    AT24C02_read(0x00, buffer, 4);
+    AT24C02_read(0x00, raw, EEPROM_TOTAL_SIZE);
 
-    vid = ((uint16_t)buffer[EEPROM_ADDR_DIV] << 8) | buffer[EEPROM_ADDR_DIV + 1];
-    pid = ((uint16_t)buffer[EEPROM_ADDR_PID] << 8) | buffer[EEPROM_ADDR_PID + 1];
+    // microTLV format verified against:
+    // - ch572d/src/src/external/microtlv/tlv.c
+    // - website/src/lib/usbsp/tlv.js
+    if (eeprom_parse_tlv(raw, EEPROM_TOTAL_SIZE, &info) == 0) {
+        log_parsed_eeprom_tlv(&info);
+        vid = info.has_vid ? info.vid : 0;
+        pid = info.has_pid ? info.pid : 0;
+        LOG_INFO("EEPROM: effective VID=0x%04X PID=0x%04X", vid, pid);
+        return;
+    }
 
-    LOG_DEBUG("EEPROM: read from EEPROM:");
-    LOG_DEBUG("EEPROM: VID: 0x%04X (%u)", vid, vid);
-    LOG_DEBUG("EEPROM: PID: 0x%04X (%u)", pid, pid);
+    LOG_WARN("EEPROM: TLV parse failed, using legacy fixed VID/PID layout");
+    vid = ((uint16_t)raw[EEPROM_ADDR_DIV] << 8) | raw[EEPROM_ADDR_DIV + 1];
+    pid = ((uint16_t)raw[EEPROM_ADDR_PID] << 8) | raw[EEPROM_ADDR_PID + 1];
+    LOG_INFO("EEPROM legacy: VID=0x%04X (%u)", vid, vid);
+    LOG_INFO("EEPROM legacy: PID=0x%04X (%u)", pid, pid);
 }
 
 /*********************************************************************
