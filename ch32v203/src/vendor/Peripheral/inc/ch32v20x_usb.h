@@ -127,7 +127,6 @@ extern "C" {
 #define USB_DESCR_TYP_CS_INTF       0x24
 #define USB_DESCR_TYP_CS_ENDP       0x25
 #define USB_DESCR_TYP_HUB           0x29
-#define USB_DESCR_TYP_BOS           0x0F
 #endif
 
 /* USB Device Class */

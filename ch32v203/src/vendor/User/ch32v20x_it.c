@@ -10,6 +10,11 @@
 * microcontroller manufactured by Nanjing Qinheng Microelectronics.
 *******************************************************************************/
 #include "ch32v20x_it.h"
+#include "debug_log.h"
+
+volatile uint32_t g_hardfault_mcause = 0;
+volatile uint32_t g_hardfault_mepc = 0;
+volatile uint32_t g_hardfault_mtval = 0;
 
 void NMI_Handler(void) __attribute__((interrupt("WCH-Interrupt-fast")));
 void HardFault_Handler(void) __attribute__((interrupt("WCH-Interrupt-fast")));
@@ -37,7 +42,15 @@ void NMI_Handler(void)
  */
 void HardFault_Handler(void)
 {
-  NVIC_SystemReset();
+  g_hardfault_mcause = __get_MCAUSE();
+  g_hardfault_mepc = __get_MEPC();
+  g_hardfault_mtval = __get_MTVAL();
+
+  LOG_ERROR("HARDFAULT: mcause=0x%08lX mepc=0x%08lX mtval=0x%08lX",
+            (unsigned long)g_hardfault_mcause,
+            (unsigned long)g_hardfault_mepc,
+            (unsigned long)g_hardfault_mtval);
+
   while (1)
   {
   }
