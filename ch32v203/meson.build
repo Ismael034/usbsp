@@ -1,6 +1,7 @@
 inc_dirs = include_directories(
     'src/src',
     'src/src/eeprom',
+    'src/src/external/microtlv',
     'src/src/usb',
     'src/src/usb/usbd',
     'src/src/usb/usbh',
@@ -17,8 +18,9 @@ firmware_main_test = 'tests/src/main.c'
 firmware_sources = files(
     # src directory
     'src/src/eeprom/eeprom.c',
-    'src/src/system.c',
+    'src/src/external/microtlv/tlv.c',
     'src/src/usb/relay.c',
+    'src/src/usb/queue.c',
     'src/src/usb/usb_relay.c',
     'src/src/usb/usbd/usb_desc.c',
     'src/src/usb/usbd/usb_endp.c',
@@ -28,8 +30,6 @@ firmware_sources = files(
     'src/src/usb/usbd/usb_pwr.c',
     'src/src/usb/usbd/usbd.c',
     'src/src/usb/usbh/app.c',
-    'src/src/usb/usbh/usb_hid.c',
-    'src/src/usb/usbh/usb_hub.c',
     'src/src/usb/usbh/usb_hw.c',
     'src/src/usb/usbh/usbh.c',
     'src/src/user.c',
