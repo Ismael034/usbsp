@@ -114,7 +114,6 @@ uint8_t UserOptionByteConfig(FunctionalState RESET_EN, FunctionalState UART_NO_K
  */
 uint8_t UserOptionByteClose_SWD(void)
 {
-    uint32_t s, t;
 
     return 1;
 }
