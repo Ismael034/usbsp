@@ -78,7 +78,6 @@ extern __attribute__((aligned(4))) uint8_t  USBFS_TX_Buf[ ];
 /*******************************************************************************/
 /* Function Declaration */
 extern void usbh_init(FunctionalState sta);
-extern uint8_t usbd_test(void);
 extern uint8_t USBFSH_CheckRootHubPortStatus( uint8_t dev_sta );
 extern uint8_t USBFSH_CheckRootHubPortEnable( void );
 extern uint8_t USBFSH_CheckRootHubPortSpeed( void );
@@ -97,6 +96,4 @@ extern uint8_t USBFSH_SetUsbConfig( uint8_t ep0_size, uint8_t cfg_val );
 extern uint8_t USBFSH_ClearEndpStall( uint8_t ep0_size, uint8_t endp_num );
 extern uint8_t USBFSH_GetEndpData( uint8_t endp_num, uint8_t *pendp_tog, uint8_t *pbuf, uint16_t *plen );
 extern uint8_t USBFSH_SendEndpData( uint8_t endp_num, uint8_t *pendp_tog, uint8_t *pbuf, uint16_t len );
-extern uint8_t USBFSH_SendEndpDataLarge(uint8_t endp_num, uint8_t *pendp_tog, uint8_t *pbuf, uint16_t total_len);
-extern uint8_t CheckUSBDataAvailable(uint8_t endp_num);
 #endif
