@@ -642,8 +642,21 @@ __attribute__((always_inline)) RV_STATIC_INLINE uint32_t __get_SP(void)
  */
 __attribute__((always_inline)) RV_STATIC_INLINE void __MCPY(void *dst, void *start, void *end)
 {
+#ifndef CH57X_USE_MCPY_INSN
+#define CH57X_USE_MCPY_INSN 0
+#endif
+
+#if CH57X_USE_MCPY_INSN
     __asm volatile("mcpy %2, %0, %1" : \
                    "+r"(start), "+r"(dst) : "r"(end) : "memory");
+#else
+    uint8_t *s = (uint8_t *)start;
+    uint8_t *d = (uint8_t *)dst;
+    uint8_t *e = (uint8_t *)end;
+    while (s < e) {
+        *d++ = *s++;
+    }
+#endif
 }
 
 #define SysTick_SR_SWIE             (1 << 31)
