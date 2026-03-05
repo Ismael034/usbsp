@@ -5,7 +5,6 @@
 #include "usbd.h"
 
 void usbd_hw_set_clk(void);
-void usb_hw_set_config(void);
 void usb_hw_set_lpm(void);
 void usb_hw_leave_lpm(void);
 void usb_hw_set_isr_config(void);

@@ -10,8 +10,28 @@ uint8_t volatile USBD_Endp_Busy[MAX_USB_IN_ENDPOINTS] = {0};
 uint16_t USB_Rx_Cnt = 0;
 uint8_t Buffer[DEF_USBD_MAX_PACK_SIZE];
 
+static void update_out_ep_flow(uint8_t ep_num)
+{
+    if (ep_num == 0)
+    {
+        return;
+    }
 
-static uint8_t ep_toggle[8] = {0};
+    if (ep_num >= MAX_EP_NUM)
+    {
+        SetEPRxStatus(ep_num, EP_RX_NAK);
+        return;
+    }
+
+    if (isr_queue_has_space(ep_num))
+    {
+        SetEPRxStatus(ep_num, EP_RX_VALID);
+    }
+    else
+    {
+        SetEPRxStatus(ep_num, EP_RX_NAK);
+    }
+}
 
 /* Endpoint 1 IN Callback */
 void EP1_IN_Callback(void) /* Clear busy flag after transfer */
@@ -61,76 +81,56 @@ void EP1_OUT_Callback(void)
     //}
     //printf("\n\r");
     //fflush(stdout);
-    if (isr_enqueue_packet(EP1_OUT, Buffer, count) != 0) {
-        LOG_ERROR("USB: ISR queue full, dropped EP%u OUT\n", EP1_OUT);
-    }
-    SetEPRxStatus(ENDP1, EP_RX_VALID);
+    (void)isr_enqueue_packet(EP1_OUT, Buffer, count);
+    update_out_ep_flow(ENDP1);
 }
 
 /* Endpoint 2 OUT Callback */
 void EP2_OUT_Callback(void)
 {
     uint16_t count = USB_SIL_Read(EP2_OUT, Buffer);
-    if (isr_enqueue_packet(EP2_OUT, Buffer, count) != 0) {
-        LOG_ERROR("USB: ISR queue full, dropped EP%u OUT\n", EP2_OUT);
-    }
-    SetEPRxStatus(ENDP2, EP_RX_VALID);
+    (void)isr_enqueue_packet(EP2_OUT, Buffer, count);
+    update_out_ep_flow(ENDP2);
 }
 
 /* Endpoint 3 OUT Callback */
 void EP3_OUT_Callback(void)
 {
     uint16_t count = USB_SIL_Read(EP3_OUT, Buffer);
-    if (isr_enqueue_packet(EP3_OUT, Buffer, count) != 0) {
-        LOG_ERROR("USB: ISR queue full, dropped EP%u OUT\n", EP3_OUT);
-    }
-    SetEPRxStatus(ENDP3, EP_RX_VALID);
+    (void)isr_enqueue_packet(EP3_OUT, Buffer, count);
+    update_out_ep_flow(ENDP3);
 }
 
 /* Endpoint 4 OUT Callback */
 void EP4_OUT_Callback(void)
 {
     uint16_t count = USB_SIL_Read(EP4_OUT, Buffer);
-    if (isr_enqueue_packet(EP4_OUT, Buffer, count) != 0) {
-        LOG_ERROR("USB: ISR queue full, dropped EP%u OUT\n", EP4_OUT);
-    }
-    SetEPRxStatus(ENDP4, EP_RX_VALID);
+    (void)isr_enqueue_packet(EP4_OUT, Buffer, count);
+    update_out_ep_flow(ENDP4);
 }
 
 /* Endpoint 5 OUT Callback */
 void EP5_OUT_Callback(void)
 {
     uint16_t count = USB_SIL_Read(EP5_OUT, Buffer);
-    if (isr_enqueue_packet(EP5_OUT, Buffer, count) != 0) {
-        LOG_ERROR("USB: ISR queue full, dropped EP%u OUT\n", EP5_OUT);
-    } else
-    {
-        SetEPRxStatus(ENDP5, EP_RX_VALID);
-    }
+    (void)isr_enqueue_packet(EP5_OUT, Buffer, count);
+    update_out_ep_flow(ENDP5);
 }
 
 /* Endpoint 6 OUT Callback */
 void EP6_OUT_Callback(void)
 {
     uint16_t count = USB_SIL_Read(EP6_OUT, Buffer);
-    if (isr_enqueue_packet(EP6_OUT, Buffer, count) != 0) {
-        LOG_ERROR("USB: ISR queue full, dropped EP%u OUT\n", EP6_OUT);
-    } else
-    {
-        SetEPRxStatus(ENDP6, EP_RX_VALID);
-    }
+    (void)isr_enqueue_packet(EP6_OUT, Buffer, count);
+    update_out_ep_flow(ENDP6);
 }
 
 /* Endpoint 7 OUT Callback */
 void EP7_OUT_Callback(void)
 {
     uint16_t count = USB_SIL_Read(EP7_OUT, Buffer);
-    if (isr_enqueue_packet(EP7_OUT, Buffer, count) != 0) {
-        LOG_ERROR("USB: ISR queue full, dropped EP%u OUT\n", EP7_OUT);
-    } else
-    {
-        SetEPRxStatus(ENDP7, EP_RX_VALID);
-    }
+    (void)isr_enqueue_packet(EP7_OUT, Buffer, count);
+    update_out_ep_flow(ENDP7);
 }
 uint8_t UDBD_ENDP_Busy(uint16_t endpoint)
 {

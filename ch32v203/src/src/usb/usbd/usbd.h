@@ -68,5 +68,6 @@
 // #define  EP7_OUT_Callback   NOP_Process
 
 void usbd_driver_init(void);
+uint8_t usbd_test(void);
 
 #endif

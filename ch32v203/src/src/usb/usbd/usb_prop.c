@@ -6,6 +6,20 @@ extern uint8_t USBD_Endp_Busy[MAX_USB_IN_ENDPOINTS];
 extern ep_config *ep_conf;
 extern uint8_t ep_conf_size;
 
+static void usbd_apply_in_endpoint_config(uint8_t ep_idx, const ep_config *cfg)
+{
+    SetEPTxAddr(ep_idx, cfg->ep_tx_addr);
+    SetEPTxCount(ep_idx, cfg->ep_tx_count);
+    SetEPTxStatus(ep_idx, cfg->ep_tx_status);
+}
+
+static void usbd_apply_out_endpoint_config(uint8_t ep_idx, const ep_config *cfg)
+{
+    SetEPRxAddr(ep_idx, cfg->ep_rx_addr);
+    SetEPRxCount(ep_idx, cfg->ep_rx_count);
+    SetEPRxStatus(ep_idx, cfg->ep_rx_status);
+}
+
 void usbd_init(void)
 {
     pInformation->Current_Configuration = 0;
@@ -57,37 +71,28 @@ void usbd_reset(void)
 }
 
 
-void usbd_set_endpoint_config(ep_config *ep_config, uint8_t endpoints)
+void usbd_set_endpoint_config(ep_config *endpoint_cfg, uint8_t endpoints)
 {
     LOG_DEBUG("Configuring %d endpoints", endpoints);
 
     for (uint8_t i = 0; i < endpoints; i++) {
-        uint8_t ep_addr = ep_config[i].ep_num;         // full addr (0x81 etc)
-        uint8_t ep_idx  = ep_addr & 0x0F;              // numeric index (0..)
-        uint8_t is_in   = ep_config[i].is_ep_in;
+        const ep_config *cfg = &endpoint_cfg[i];
+        uint8_t ep_addr = cfg->ep_num;         // full addr (0x81 etc)
+        uint8_t ep_idx  = ep_addr & 0x0F;      // numeric index (0..)
+        uint8_t is_in   = cfg->is_ep_in;
 
-        SetEPType(ep_idx, ep_config[i].ep_type);
+        SetEPType(ep_idx, cfg->ep_type);
 
         if (is_in == 0) {
-            //printf("    IN ep_ep_idx=%d ep_addr=%d, type=%d, ep_rx_count=%d\n\r", ep_idx, ep_addr, ep_config[i].ep_type, ep_config[i].ep_rx_count);
-            // IN endpoint: set TX registers
-            SetEPTxAddr(ep_idx, ep_config[i].ep_tx_addr);
-            SetEPTxCount(ep_idx, ep_config[i].ep_tx_count);
-            SetEPTxStatus(ep_idx, ep_config[i].ep_tx_status);
-            // If user provided RX registers for a bi-directional EP, set them too:
-            SetEPRxAddr(ep_idx, ep_config[i].ep_rx_addr);
-            SetEPRxCount(ep_idx, ep_config[i].ep_rx_count);
-            SetEPRxStatus(ep_idx, ep_config[i].ep_rx_status);
+            // IN endpoint descriptor: configure TX direction only.
+            // Do not touch RX here, otherwise a separate OUT descriptor for the
+            // same endpoint number can be clobbered.
+            usbd_apply_in_endpoint_config(ep_idx, cfg);
         } else {
-            printf("    OUT ep_ep_idx=%d ep_addr=%d, type=%d, ep_rx_count=%d\n\r", ep_idx, ep_addr, ep_config[i].ep_type, ep_config[i].ep_rx_count);
-            // OUT endpoint: set RX registers
-            SetEPRxAddr(ep_idx, ep_config[i].ep_rx_addr);
-            SetEPRxCount(ep_idx, ep_config[i].ep_rx_count);
-            SetEPRxStatus(ep_idx, ep_config[i].ep_rx_status);
-            // If user provided TX registers for a bi-directional EP, set them too:
-            SetEPTxAddr(ep_idx, ep_config[i].ep_tx_addr);
-            SetEPTxCount(ep_idx, ep_config[i].ep_tx_count);
-            SetEPTxStatus(ep_idx, ep_config[i].ep_tx_status);
+            // OUT endpoint descriptor: configure RX direction only.
+            // Do not touch TX here, otherwise a separate IN descriptor for the
+            // same endpoint number can be clobbered.
+            usbd_apply_out_endpoint_config(ep_idx, cfg);
         }
 
         _ClearDTOG_TX(ep_idx);
@@ -109,6 +114,7 @@ void usbd_status_out(void)
 
 RESULT usbd_data_setup(uint8_t request_no)
 {
+    (void)request_no;
     uint32_t Request_No = pInformation->USBbRequest;
     uint8_t *(*CopyRoutine)(uint16_t) = NULL;
 
@@ -157,23 +163,18 @@ RESULT usbd_data_setup(uint8_t request_no)
 
 RESULT usbd_nodata_setup(uint8_t RequestNo)
 {      
-    uint32_t Request_No = pInformation->USBbRequest;
-    LOG_DEBUG("USB: usbd nodata request no %x", Request_No);         
+    (void)RequestNo;
+    LOG_DEBUG("USB: usbd nodata request no %x", pInformation->USBbRequest);
     return USB_SUCCESS;
 }
 
 RESULT usbd_get_interface_setting(uint8_t Interface, uint8_t AlternateSetting)
 {
-  if (AlternateSetting > 0)
-  {
-    return USB_UNSUPPORT;
-  }
-  else if (Interface > 1)
-  {
-    return USB_UNSUPPORT;
-  }
-	
-  return USB_SUCCESS;
+    if ((AlternateSetting > 0) || (Interface > 1))
+    {
+        return USB_UNSUPPORT;
+    }
+    return USB_SUCCESS;
 }
 
 uint8_t *usbd_get_device_descriptor(uint16_t length)
