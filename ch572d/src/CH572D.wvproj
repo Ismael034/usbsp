@@ -139,7 +139,8 @@
 							"${project}/StdPeriphDriver/inc",
 							"${project}/src",
 							"${project}/RVMSIS",
-							"${project}/src/usb"
+							"${project}/src/usb",
+							"${project}/src/external"
 						],
 						"include_system_paths": [],
 						"include_files": []
