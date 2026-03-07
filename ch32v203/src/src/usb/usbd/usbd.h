@@ -19,24 +19,24 @@
 
 /* Buffer Description Table */
 /* buffer table base address */
-/* buffer table base address */
 #define BTABLE_ADDRESS      (0x00)
 
-/* EP0  */
-/* rx/tx buffer base address */
+/* PMA layout (USB FS PMA is 0x000..0x1FF, BTABLE uses 0x000..0x03F) */
+/* Keep all endpoint buffers below 0x200 to avoid DOVR due to PMA overflow. */
+/* EP0 uses 8-byte packets in this project, data endpoints use up to 64 bytes. */
 #define ENDP0_RXADDR        (0x40)
-#define ENDP0_TXADDR        (0x80)
+#define ENDP0_TXADDR        (0x50)
 
-/* EP1  */
-/* tx buffer base address */
-#define ENDP1_TXADDR     (0xC0)
-#define ENDP1_RXADDR     (ENDP1_TXADDR + 0x40)
-#define ENDP2_TXADDR     (ENDP1_RXADDR + 0x40)
-#define ENDP2_RXADDR     (ENDP2_TXADDR + 0x40)
-#define ENDP3_TXADDR     (ENDP2_RXADDR + 0x40)
-#define ENDP3_RXADDR     (ENDP3_TXADDR + 0x40)
-#define ENDP4_TXADDR     (ENDP3_RXADDR + 0x40)
-#define ENDP4_RXADDR     (ENDP4_TXADDR + 0x40)
+#define ENDP1_TXADDR        (0x60)
+#define ENDP1_RXADDR        (0xA0)
+#define ENDP2_TXADDR        (0xE0)
+#define ENDP2_RXADDR        (0x120)
+#define ENDP3_TXADDR        (0x160)
+#define ENDP3_RXADDR        (0x1A0)
+
+/* Optional EP4 mapping left disabled; no PMA headroom guaranteed for 64-byte RX/TX. */
+#define ENDP4_TXADDR        (0x1E0)
+#define ENDP4_RXADDR        (0x1F0)
 
 
 /* #define CTR_CALLBACK */
@@ -71,3 +71,4 @@ void usbd_driver_init(void);
 uint8_t usbd_test(void);
 
 #endif
+
