@@ -14,6 +14,7 @@ inc_dirs = include_directories(
 
 firmware_main = 'src/src/main.c'
 firmware_main_test = 'tests/src/main.c'
+firmware_test_sources = files('tests/src/usb_desc.c')
 
 firmware_sources = files(
     # src directory
@@ -79,7 +80,7 @@ firmware_exe = executable('ch32v203',
 
 # Test ELF executable
 firmware_test_exe = executable('ch32v203_test',
-    sources: [ firmware_main_test, firmware_sources ],
+    sources: [ firmware_main_test, firmware_test_sources, firmware_sources ],
     include_directories: inc_dirs,
     link_args: ['-T', linker_script],
     name_suffix: 'elf'
@@ -116,3 +117,4 @@ firmware_test_bin = custom_target(
     output: 'ch32v203_test.bin',
     command: ['riscv-none-embed-objcopy', '-O', 'binary', '@INPUT@', '@OUTPUT@'],
 )
+
