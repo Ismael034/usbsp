@@ -86,7 +86,7 @@ void usbd_istr(void)
 #if (IMR_MSK & ISTR_DOVR)
   if (wIstr & ISTR_DOVR & wInterrupt_Mask)
   {
-    LOG_ERROR("USB: EP data overrun");
+    LOG_ERROR("usbd: ep data overrun");
     _SetISTR((uint16_t)CLR_DOVR);
 #ifdef DOVR_CALLBACK
     DOVR_Callback();
@@ -177,3 +177,4 @@ void usbd_istr(void)
   }
 #endif
 } /* USB_Istr */
+

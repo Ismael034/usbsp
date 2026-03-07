@@ -40,7 +40,6 @@ typedef struct _ep_config {
 
 
 void usbd_init(void);
-void usbd_init_test(void);
 void usbd_reset(void);
 void usbd_status_in(void);
 void usbd_status_out(void);

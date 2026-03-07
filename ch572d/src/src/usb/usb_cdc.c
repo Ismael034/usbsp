@@ -124,7 +124,7 @@ typedef struct __attribute__((packed)) {
 
 static line_code_t cdc_line_code;
 
-static void uart_log(const char *msg)
+static __attribute__((unused)) void uart_log(const char *msg)
 {
 #if LOG_UART_ENABLED
     if (msg) {

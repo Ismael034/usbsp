@@ -1,6 +1,7 @@
 inc_dirs = include_directories(
     'src/src',
     'src/src/eeprom',
+    'src/src/external/microtlv',
     'src/src/usb',
     'src/src/usb/usbd',
     'src/src/usb/usbh',
@@ -13,12 +14,14 @@ inc_dirs = include_directories(
 
 firmware_main = 'src/src/main.c'
 firmware_main_test = 'tests/src/main.c'
+firmware_test_sources = files('tests/src/usb_desc.c')
 
 firmware_sources = files(
     # src directory
     'src/src/eeprom/eeprom.c',
-    'src/src/system.c',
+    'src/src/external/microtlv/tlv.c',
     'src/src/usb/relay.c',
+    'src/src/usb/queue.c',
     'src/src/usb/usb_relay.c',
     'src/src/usb/usbd/usb_desc.c',
     'src/src/usb/usbd/usb_endp.c',
@@ -28,8 +31,6 @@ firmware_sources = files(
     'src/src/usb/usbd/usb_pwr.c',
     'src/src/usb/usbd/usbd.c',
     'src/src/usb/usbh/app.c',
-    'src/src/usb/usbh/usb_hid.c',
-    'src/src/usb/usbh/usb_hub.c',
     'src/src/usb/usbh/usb_hw.c',
     'src/src/usb/usbh/usbh.c',
     'src/src/user.c',
@@ -79,7 +80,7 @@ firmware_exe = executable('ch32v203',
 
 # Test ELF executable
 firmware_test_exe = executable('ch32v203_test',
-    sources: [ firmware_main_test, firmware_sources ],
+    sources: [ firmware_main_test, firmware_test_sources, firmware_sources ],
     include_directories: inc_dirs,
     link_args: ['-T', linker_script],
     name_suffix: 'elf'
@@ -116,3 +117,4 @@ firmware_test_bin = custom_target(
     output: 'ch32v203_test.bin',
     command: ['riscv-none-embed-objcopy', '-O', 'binary', '@INPUT@', '@OUTPUT@'],
 )
+

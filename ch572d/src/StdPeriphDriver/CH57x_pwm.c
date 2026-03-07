@@ -130,7 +130,6 @@ void PWMX_16bit_ACTOUT(uint8_t ch, uint16_t da, PWMX_PolarTypeDef pr, Functional
  */
 void PWMX_ACTOUT(uint8_t ch, uint8_t da, PWMX_PolarTypeDef pr, FunctionalState s)
 {
-    uint8_t i;
 
     if(s == DISABLE)
     {

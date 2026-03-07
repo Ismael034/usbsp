@@ -1,5 +1,6 @@
 #include <stdio.h>
 
+#define NDEBUG
 #ifdef NDEBUG
 #define LOG_DEBUG(fmt, ...) ((void)0)  /* No-op for debug logs when NDEBUG is defined */
 #else

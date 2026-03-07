@@ -62,14 +62,37 @@ uint32_t USB_SIL_Write(uint8_t bEpAddr, uint8_t* pBufferPointer, uint32_t wBuffe
  */
 uint32_t USB_SIL_Read(uint8_t bEpAddr, uint8_t* pBufferPointer)
 {
+  uint8_t ep_num;
+  uint16_t rx_addr;
   uint32_t DataLength = 0;
 
-  DataLength = GetEPRxCount(bEpAddr & 0x7F); 
-  PMAToUserBufferCopy(pBufferPointer, GetEPRxAddr(bEpAddr & 0x7F), DataLength);
+  if (pBufferPointer == NULL)
+  {
+    return 0;
+  }
+
+  ep_num = bEpAddr & 0x7F;
+  if (ep_num > ENDP7)
+  {
+    return 0;
+  }
+
+  DataLength = GetEPRxCount(ep_num);
+  if (DataLength == 0)
+  {
+    return 0;
+  }
+
+  rx_addr = GetEPRxAddr(ep_num);
+  if ((rx_addr == 0xFFFFu) || ((rx_addr & 0x0001u) != 0u) || (rx_addr >= 0x0200u))
+  {
+    return 0;
+  }
+
+  PMAToUserBufferCopy(pBufferPointer, rx_addr, (uint16_t)DataLength);
 
   return DataLength;
 }
-
 
 
 

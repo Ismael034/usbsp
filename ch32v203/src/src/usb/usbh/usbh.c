@@ -624,13 +624,6 @@ uint8_t USBFSH_ClearEndpStall( uint8_t ep0_size, uint8_t endp_num )
     return USBFSH_CtrlTransfer( ep0_size, NULL, NULL );
 }
 
-uint8_t CheckUSBDataAvailable(uint8_t endp_num) {
-    if (USBFSH->RX_LEN > 0) { // Data is available
-        return 0;
-    }
-    return 2; // Custom error code for no data
-}
-
 /*********************************************************************
  * @fn      USBFSH_GetEndpData
  *
@@ -686,28 +679,3 @@ uint8_t USBFSH_SendEndpData( uint8_t endp_num, uint8_t *pendp_tog, uint8_t *pbuf
     return s;
 }
 
-
-uint8_t USBFSH_SendEndpDataLarge(uint8_t endp_num, uint8_t *pendp_tog, uint8_t *pbuf, uint16_t total_len)
-{
-    uint8_t status;
-    uint16_t offset = 0;
-
-    while (total_len > 0)
-    {
-        uint16_t pkt_len = (total_len > 64) ? 64 : total_len;
-
-        memcpy(USBFS_TX_Buf, pbuf + offset, pkt_len);
-        USBFSH->HOST_TX_LEN = pkt_len;
-
-        status = USBFSH_Transact((USB_PID_OUT << 4) | endp_num, *pendp_tog, 0);
-        if (status != ERR_SUCCESS)
-            return status;
-
-        *pendp_tog ^= USBFS_UH_T_TOG;   // toggle DATA0/DATA1
-
-        offset += pkt_len;
-        total_len -= pkt_len;
-    }
-
-    return ERR_SUCCESS;
-}

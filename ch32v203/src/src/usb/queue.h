@@ -6,7 +6,7 @@
 
 #define ISR_Q_DEPTH   8
 #define MAX_PKT_SZ    64
-#define MAX_EP_NUM    4
+#define MAX_EP_NUM    8
 
 
 typedef struct {
@@ -28,6 +28,10 @@ extern  uint8_t Host_InBusy[MAX_EP_NUM];
 extern  uint8_t Host_InToggle[MAX_EP_NUM];
 
 uint8_t isr_enqueue_packet(uint8_t ep_num, const uint8_t *data, uint16_t len);
+uint8_t peek_packet_for_main(uint8_t ep_num, uint8_t *out_buf, uint16_t *out_len);
+uint8_t pop_packet_for_main(uint8_t ep_num);
 uint8_t dequeue_packet_for_main(uint8_t ep_num, uint8_t *out_buf, uint16_t *out_len);
+uint8_t isr_queue_has_space(uint8_t ep_num);
 
 #endif
+

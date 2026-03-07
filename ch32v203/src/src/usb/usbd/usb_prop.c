@@ -6,6 +6,20 @@ extern uint8_t USBD_Endp_Busy[MAX_USB_IN_ENDPOINTS];
 extern ep_config *ep_conf;
 extern uint8_t ep_conf_size;
 
+static void usbd_apply_in_endpoint_config(uint8_t ep_idx, const ep_config *cfg)
+{
+    SetEPTxAddr(ep_idx, cfg->ep_tx_addr);
+    SetEPTxCount(ep_idx, cfg->ep_tx_count);
+    SetEPTxStatus(ep_idx, cfg->ep_tx_status);
+}
+
+static void usbd_apply_out_endpoint_config(uint8_t ep_idx, const ep_config *cfg)
+{
+    SetEPRxAddr(ep_idx, cfg->ep_rx_addr);
+    SetEPRxCount(ep_idx, cfg->ep_rx_count);
+    SetEPRxStatus(ep_idx, cfg->ep_rx_status);
+}
+
 void usbd_init(void)
 {
     pInformation->Current_Configuration = 0;
@@ -13,10 +27,10 @@ void usbd_init(void)
 
     for (uint8_t i = 0; i < 8; i++)
     {
-        _SetENDPOINT(i,_GetENDPOINT(i) & 0x7F7F & EPREG_MASK); //all clear
+        _SetENDPOINT(i,_GetENDPOINT(i) & 0x7F7F & EPREG_MASK); 
     }
-    _SetISTR((uint16_t)0x00FF); //all clear
-    USB_SIL_Init(IMR_MSK); // initialize the USB Software Interface Layer
+    _SetISTR((uint16_t)0x00FF); 
+    USB_SIL_Init(IMR_MSK); 
     
     bDeviceState = UNCONNECTED;
     
@@ -24,7 +38,7 @@ void usbd_init(void)
     Delay_Ms(20);
     usb_hw_set_port(ENABLE, ENABLE);
 
-    LOG_INFO("USB: Initialization complete");
+    LOG_INFO("usbd: Initialization complete");
 }
 
 void usbd_reset(void)
@@ -53,41 +67,26 @@ void usbd_reset(void)
     SetDeviceAddress(0);
     bDeviceState = ATTACHED;
 
-    LOG_DEBUG("USB: usbd reset");
+    LOG_DEBUG("usbd: reset");
 }
 
 
-void usbd_set_endpoint_config(ep_config *ep_config, uint8_t endpoints)
+void usbd_set_endpoint_config(ep_config *endpoint_cfg, uint8_t endpoints)
 {
-    LOG_DEBUG("Configuring %d endpoints", endpoints);
+    LOG_DEBUG("usbd: configuring %d endpoints", endpoints);
 
     for (uint8_t i = 0; i < endpoints; i++) {
-        uint8_t ep_addr = ep_config[i].ep_num;         // full addr (0x81 etc)
-        uint8_t ep_idx  = ep_addr & 0x0F;              // numeric index (0..)
-        uint8_t is_in   = ep_config[i].is_ep_in;
+        const ep_config *cfg = &endpoint_cfg[i];
+        uint8_t ep_addr = cfg->ep_num;
+        uint8_t ep_idx  = ep_addr & 0x0F;
+        uint8_t is_in   = cfg->is_ep_in;
 
-        SetEPType(ep_idx, ep_config[i].ep_type);
+        SetEPType(ep_idx, cfg->ep_type);
 
         if (is_in == 0) {
-            //printf("    IN ep_ep_idx=%d ep_addr=%d, type=%d, ep_rx_count=%d\n\r", ep_idx, ep_addr, ep_config[i].ep_type, ep_config[i].ep_rx_count);
-            // IN endpoint: set TX registers
-            SetEPTxAddr(ep_idx, ep_config[i].ep_tx_addr);
-            SetEPTxCount(ep_idx, ep_config[i].ep_tx_count);
-            SetEPTxStatus(ep_idx, ep_config[i].ep_tx_status);
-            // If user provided RX registers for a bi-directional EP, set them too:
-            SetEPRxAddr(ep_idx, ep_config[i].ep_rx_addr);
-            SetEPRxCount(ep_idx, ep_config[i].ep_rx_count);
-            SetEPRxStatus(ep_idx, ep_config[i].ep_rx_status);
+            usbd_apply_in_endpoint_config(ep_idx, cfg);
         } else {
-            printf("    OUT ep_ep_idx=%d ep_addr=%d, type=%d, ep_rx_count=%d\n\r", ep_idx, ep_addr, ep_config[i].ep_type, ep_config[i].ep_rx_count);
-            // OUT endpoint: set RX registers
-            SetEPRxAddr(ep_idx, ep_config[i].ep_rx_addr);
-            SetEPRxCount(ep_idx, ep_config[i].ep_rx_count);
-            SetEPRxStatus(ep_idx, ep_config[i].ep_rx_status);
-            // If user provided TX registers for a bi-directional EP, set them too:
-            SetEPTxAddr(ep_idx, ep_config[i].ep_tx_addr);
-            SetEPTxCount(ep_idx, ep_config[i].ep_tx_count);
-            SetEPTxStatus(ep_idx, ep_config[i].ep_tx_status);
+            usbd_apply_out_endpoint_config(ep_idx, cfg);
         }
 
         _ClearDTOG_TX(ep_idx);
@@ -98,21 +97,22 @@ void usbd_set_endpoint_config(ep_config *ep_config, uint8_t endpoints)
 
 void usbd_status_in(void)
 {
-    LOG_DEBUG("USB: usbd inserted (in)");
+    LOG_DEBUG("usbd: inserted (in)");
 }
 
 void usbd_status_out(void)
 {
-    LOG_DEBUG("USB: usbd removed (out)");
+    LOG_DEBUG("usbd: removed (out)");
 
 }
 
 RESULT usbd_data_setup(uint8_t request_no)
 {
+    (void)request_no;
     uint32_t Request_No = pInformation->USBbRequest;
     uint8_t *(*CopyRoutine)(uint16_t) = NULL;
 
-    LOG_DEBUG("USB: usbd data request no %x", Request_No);
+    LOG_DEBUG("usbd: data request no %x", Request_No);
 
     if (Type_Recipient == (STANDARD_REQUEST | DEVICE_RECIPIENT) ||
         Type_Recipient == (STANDARD_REQUEST | INTERFACE_RECIPIENT) ||
@@ -124,7 +124,7 @@ RESULT usbd_data_setup(uint8_t request_no)
             {
                 uint8_t wValueHi = pInformation->USBwValue1;
 
-                LOG_DEBUG("USB: usbd data request %x", wValueHi);
+                LOG_DEBUG("usbd: data request %x", wValueHi);
 
                 if (wValueHi == USB_DEVICE_DESCRIPTOR)
                 {
@@ -157,23 +157,18 @@ RESULT usbd_data_setup(uint8_t request_no)
 
 RESULT usbd_nodata_setup(uint8_t RequestNo)
 {      
-    uint32_t Request_No = pInformation->USBbRequest;
-    LOG_DEBUG("USB: usbd nodata request no %x", Request_No);         
+    (void)RequestNo;
+    LOG_DEBUG("usbd: nodata request no %x", pInformation->USBbRequest);
     return USB_SUCCESS;
 }
 
 RESULT usbd_get_interface_setting(uint8_t Interface, uint8_t AlternateSetting)
 {
-  if (AlternateSetting > 0)
-  {
-    return USB_UNSUPPORT;
-  }
-  else if (Interface > 1)
-  {
-    return USB_UNSUPPORT;
-  }
-	
-  return USB_SUCCESS;
+    if ((AlternateSetting > 0) || (Interface > 1))
+    {
+        return USB_UNSUPPORT;
+    }
+    return USB_SUCCESS;
 }
 
 uint8_t *usbd_get_device_descriptor(uint16_t length)
@@ -182,7 +177,7 @@ uint8_t *usbd_get_device_descriptor(uint16_t length)
         .Descriptor = (uint8_t*)USBD_DeviceDescriptor,
         .Descriptor_Size = USBD_SIZE_DEVICE_DESC
     };
-    LOG_DEBUG("USB: usbd device descriptor contents requested");
+    LOG_DEBUG("usbd: device descriptor contents requested");
     return Standard_GetDescriptorData(length, (ONE_DESCRIPTOR*)&Device_Descriptor);
 }
 
@@ -194,7 +189,7 @@ uint8_t *usbd_get_config_descriptor(uint16_t Length)
         USBD_ConfigDescSize
     };
 
-    LOG_DEBUG("USB: usbd config descriptor contents requested");
+    LOG_DEBUG("usbd: config descriptor contents requested");
     return Standard_GetDescriptorData(Length, &Config_Descriptor);
 }
 
@@ -206,7 +201,7 @@ uint8_t *usbd_get_string_descriptor(uint16_t length)
         {(uint8_t*)USBD_StringProduct, USBD_StringProductSize},
         {(uint8_t*)USBD_StringSerial, USBD_StringSerialSize}
     };
-    LOG_DEBUG("USB: usbd string descriptor contents requested");
+    LOG_DEBUG("usbd: string descriptor contents requested");
     uint8_t wValue0 = pInformation->USBwValue0;
 
     if (wValue0 >= 4) {
@@ -242,3 +237,5 @@ void usbd_clear_feature(void)
 {
 
 }
+
+

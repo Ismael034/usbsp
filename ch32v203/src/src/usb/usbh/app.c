@@ -2,13 +2,13 @@
 #include "usbd.h"
 #include "app.h"
 #include "debug_log.h"
+#include <stdlib.h>
 
 /* Global variables */
-uint8_t  DevDesc_Buf[18];  // Device Descriptor Buffer
-uint8_t  ConfDesc_Buf[18];  // Device Descriptor Buffer
-uint8_t  Com_Buf[DEF_COM_BUF_LEN];  // General Buffer
-uint8_t  Setup_Buf[DEF_COM_BUF_LEN];  // Setup Buffer
-uint16_t Setup_Buf_Len = 0;  // Setup Buffer
+uint8_t  DevDesc_Buf[18];
+uint8_t  Com_Buf[DEF_COM_BUF_LEN];
+uint8_t  Setup_Buf[DEF_COM_BUF_LEN];
+uint16_t Setup_Buf_Len = 0;
 uint16_t Com_Buf_Len = 0;
 
 ep_config *ep_conf;
@@ -16,6 +16,62 @@ uint8_t ep_conf_size;
 struct   _ROOT_HUB_DEVICE RootHubDev;
 struct   __HOST_CTL HostCtl[DEF_TOTAL_ROOT_HUB * DEF_ONE_USB_SUP_DEV_TOTAL];
 uint8_t descriptor_size;
+
+#define MAX_ENDPOINT_CONFIG_ENTRIES 16
+#define USB_DESCRIPTOR_TYPE_ENDPOINT 0x05
+
+static uint16_t endpoint_type_from_attributes(uint8_t attributes)
+{
+    switch (attributes & 0x03u)
+    {
+        case 0x00: return EP_CONTROL;
+        case 0x01: return EP_ISOCHRONOUS;
+        case 0x02: return EP_BULK;
+        default:   return EP_INTERRUPT;
+    }
+}
+
+#define PMA_START_ADDR 0x60u
+#define PMA_END_ADDR   0x200u
+
+static uint16_t pma_align2(uint16_t addr)
+{
+    return (uint16_t)((addr + 1u) & (uint16_t)~1u);
+}
+
+static uint16_t pma_alloc(uint16_t *next_addr, uint16_t size)
+{
+    uint16_t aligned = pma_align2(*next_addr);
+    uint16_t alloc_size = pma_align2(size);
+    uint16_t end_addr = (uint16_t)(aligned + alloc_size);
+
+    if (end_addr > PMA_END_ADDR)
+    {
+        return 0u;
+    }
+
+    *next_addr = end_addr;
+    return aligned;
+}
+
+static void init_control_ep0_config(ep_config *cfg)
+{
+    cfg->ep_num = 0;
+    cfg->ep_type = EP_CONTROL;
+    cfg->ep_tx_status = EP_TX_NAK;
+    cfg->ep_tx_addr = ENDP0_TXADDR;
+    cfg->ep_tx_count = 0;
+    cfg->ep_rx_status = EP_RX_VALID;
+    cfg->ep_rx_addr = ENDP0_RXADDR;
+    cfg->ep_rx_count = 8;
+}
+
+static void assign_usb_string_descriptor(USBD_StringDescriptor_s *dst, uint8_t *src, uint8_t size)
+{
+    memset(dst->USBD_StringDescriptor, 0, size);
+    memcpy(dst->USBD_StringDescriptor, src, size);
+    dst->USBD_StringDescriptorSize = size;
+}
 
 
 /*********************************************************************
@@ -71,21 +127,27 @@ void usbh_configure_endpoints(uint8_t *common_buffer)
     uint16_t total_length = config->wTotalLength;
     uint8_t *ptr = common_buffer + config->bLength;
     uint8_t *end = common_buffer + total_length;
+    uint16_t next_pma = PMA_START_ADDR;
 
-    ep_conf = malloc(sizeof(ep_config) * 8);
-    memset(ep_conf, 0, sizeof(ep_config) * 8);
+    if (ep_conf != NULL)
+    {
+        free(ep_conf);
+        ep_conf = NULL;
+    }
+
+    ep_conf = malloc(sizeof(ep_config) * MAX_ENDPOINT_CONFIG_ENTRIES);
+    if (ep_conf == NULL)
+    {
+        ep_conf_size = 0;
+        LOG_ERROR("usbh: endpoint config alloc failed");
+        return;
+    }
+    memset(ep_conf, 0, sizeof(ep_config) * MAX_ENDPOINT_CONFIG_ENTRIES);
 
     uint8_t endpoint_index = 0;
 
-    // Always configure EP0 (control endpoint)
-    ep_conf[0].ep_num = 0;
-    ep_conf[0].ep_type = EP_CONTROL;
-    ep_conf[0].ep_tx_status = EP_TX_NAK;
-    ep_conf[0].ep_tx_addr = ENDP0_TXADDR;
-    ep_conf[0].ep_tx_count = 0;
-    ep_conf[0].ep_rx_status = EP_RX_VALID;
-    ep_conf[0].ep_rx_addr = ENDP0_RXADDR;
-    ep_conf[0].ep_rx_count = 8;
+
+    init_control_ep0_config(&ep_conf[0]);
     endpoint_index = 1;
 
     while (ptr + 1 < end)
@@ -94,70 +156,75 @@ void usbh_configure_endpoints(uint8_t *common_buffer)
         uint8_t descriptor_type = ptr[1];
 
         if (length < 2 || ptr + length > end)
+        {
             break;
+        }
 
-        if (descriptor_type == 0x05 && endpoint_index < 8)
+        if (descriptor_type == USB_DESCRIPTOR_TYPE_ENDPOINT)
         {
             USB_EndpointDescriptor *endpoint = (USB_EndpointDescriptor *)ptr;
             uint8_t ep_num = endpoint->bEndpointAddress & 0x0F;
+            uint8_t is_in = ((endpoint->bEndpointAddress & 0x80u) != 0u) ? 1u : 0u;
+            uint16_t max_packet_size = endpoint->wMaxPacketSize & 0x07FFu;
 
-            // Skip EP0 (already configured)
-            if (ep_num == 0)
+            if (endpoint_index >= MAX_ENDPOINT_CONFIG_ENTRIES)
+            {
+                LOG_WARN("usbh: endpoint config table full, truncating");
+                break;
+            }
+            if (ep_num == 0u)
             {
                 ptr += length;
                 continue;
             }
-
-            ep_conf[endpoint_index].ep_num = ep_num;
-
-            uint8_t attributes = endpoint->bmAttributes & 0x03;
-
-            switch (attributes)
+            if (ep_num >= 8u)
             {
-                case 0x00:
-                    ep_conf[endpoint_index].ep_type = EP_CONTROL;
-                    break;
-                case 0x01:
-                    ep_conf[endpoint_index].ep_type = EP_ISOCHRONOUS;
-                    break;
-                case 0x02:
-                    ep_conf[endpoint_index].ep_type = EP_BULK;
-                    break;
-                case 0x03:
-                    ep_conf[endpoint_index].ep_type = EP_INTERRUPT;
-                    break;
+                LOG_WARN("usbh: skipping endpoint %u (beyond device EP limit)", ep_num);
+                ptr += length;
+                continue;
+            }
+            if (max_packet_size == 0u)
+            {
+                max_packet_size = 8u;
             }
 
-            uint16_t max_packet_size = endpoint->wMaxPacketSize;
-            
-            if (endpoint->bEndpointAddress & 0x80)
+            ep_conf[endpoint_index].ep_num = ep_num;
+            ep_conf[endpoint_index].ep_type = endpoint_type_from_attributes(endpoint->bmAttributes);
+
+            if (is_in)
             {
-                /* IN endpoint */
+                uint16_t tx_addr = pma_alloc(&next_pma, max_packet_size);
+                if (tx_addr == 0u)
+                {
+                    LOG_WARN("usbh: no PMA for IN ep%u size=%u", ep_num, max_packet_size);
+                    ptr += length;
+                    continue;
+                }
+
                 ep_conf[endpoint_index].is_ep_in = 0;
                 ep_conf[endpoint_index].ep_tx_status = EP_TX_NAK;
-                ep_conf[endpoint_index].ep_tx_addr = (ep_num == 1) ? ENDP1_TXADDR :
-                                                  (ep_num == 2) ? ENDP2_TXADDR :
-                                                  (ep_num == 3) ? ENDP3_TXADDR :
-                                                  (ep_num == 4) ? ENDP4_TXADDR : 0;
+                ep_conf[endpoint_index].ep_tx_addr = tx_addr;
                 ep_conf[endpoint_index].ep_tx_count = 0;
-                ep_conf[endpoint_index].ep_rx_status = EP_RX_VALID;
-                ep_conf[endpoint_index].ep_rx_addr = (ep_num == 1) ? ENDP1_RXADDR :
-                                                  (ep_num == 2) ? ENDP2_RXADDR :
-                                                  (ep_num == 3) ? ENDP3_RXADDR :
-                                                  (ep_num == 4) ? ENDP4_RXADDR : 0;
-                ep_conf[endpoint_index].ep_rx_count = max_packet_size;
+
+                LOG_INFO("usbh: PMA IN ep%u size=%u addr=0x%03X", ep_num, max_packet_size, tx_addr);
             }
             else
             {
-                /* OUT endpoint */
+                uint16_t rx_addr = pma_alloc(&next_pma, max_packet_size);
+                if (rx_addr == 0u)
+                {
+                    LOG_WARN("usbh: no PMA for OUT ep%u size=%u", ep_num, max_packet_size);
+                    ptr += length;
+                    continue;
+                }
+
                 ep_conf[endpoint_index].is_ep_in = 1;
                 ep_conf[endpoint_index].ep_rx_status = EP_RX_VALID;
-                ep_conf[endpoint_index].ep_rx_addr = (ep_num == 1) ? ENDP1_RXADDR :
-                                                  (ep_num == 2) ? ENDP2_RXADDR :
-                                                  (ep_num == 3) ? ENDP3_RXADDR :
-                                                  (ep_num == 4) ? ENDP4_RXADDR : 0;
+                ep_conf[endpoint_index].ep_rx_addr = rx_addr;
                 ep_conf[endpoint_index].ep_rx_count = max_packet_size;
                 ep_conf[endpoint_index].ep_tx_status = EP_TX_DIS;
+
+                LOG_INFO("usbh: PMA OUT ep%u size=%u addr=0x%03X", ep_num, max_packet_size, rx_addr);
             }
 
             endpoint_index++;
@@ -167,9 +234,9 @@ void usbh_configure_endpoints(uint8_t *common_buffer)
     }
 
     ep_conf_size = endpoint_index;
+    LOG_INFO("usbh: endpoint config entries=%u PMA used=0x%03X/%03X",
+             ep_conf_size, next_pma, PMA_END_ADDR);
 }
-
-
 /*********************************************************************
  * @fn      usbh_enumerate_root_device
  *
@@ -234,17 +301,11 @@ uint8_t usbh_enumerate_root_device(void)
         
         /* Get USB device descriptor */
         status = USBFSH_GetDeviceDescr(&RootHubDev.bEp0MaxPks, DevDesc_Buf);
-        LOG_DEBUG("USB: RootHubDev.bEp0MaxPks: %02x", RootHubDev.bEp0MaxPks);
+        LOG_DEBUG("usbh: RootHubDev.bEp0MaxPks: %02x", RootHubDev.bEp0MaxPks);
         if (status == ERR_SUCCESS)
         {
             memcpy(USBD_DeviceDescriptor, DevDesc_Buf, USBD_SIZE_DEVICE_DESC);
-            LOG_DEBUG("USB: Device descriptor: ");
-            printf("        ");
-            for(int i = 0; i < USBD_SIZE_DEVICE_DESC; i++)
-            {
-                printf("%02x", DevDesc_Buf[i]);
-            }
-            printf("\r\n");
+            LOG_DEBUG("usbh: Device descriptor captured");
         }
         else
         {
@@ -261,32 +322,20 @@ uint8_t usbh_enumerate_root_device(void)
         {
             USBD_BOSDescriptor = (uint8_t *)malloc(descriptor_length);
             memcpy(USBD_BOSDescriptor, Com_Buf, descriptor_length);
-            LOG_DEBUG("USB: BOS descriptor: ");
-            printf("        ");
-            for(int i = 0; i < descriptor_length; i++)
-            {
-                printf("%02x", USBD_BOSDescriptor[i]);
-            }
-            printf("\r\n");
+            LOG_DEBUG("usbh: BOS descriptor captured (%u bytes)", descriptor_length);
         }
 
         
         /* Get USB configuration descriptor */
         status = USBFSH_GetConfigDescr(RootHubDev.bEp0MaxPks, Com_Buf, DEF_COM_BUF_LEN, &descriptor_length);
-        LOG_DEBUG("USB: Config descriptor status: %02x", status);
+        LOG_DEBUG("usbh: Config descriptor status: %02x", status);
         if (status == ERR_SUCCESS)
         {
             USBD_ConfigDescriptor = (uint8_t *)malloc(descriptor_length);
             memcpy(USBD_ConfigDescriptor, Com_Buf, descriptor_length);
             USBD_ConfigDescSize = descriptor_length;
 
-            LOG_DEBUG("USB: Config descriptor: ");
-            printf("        ");
-            for(int i = 0; i < descriptor_length; i++)
-            {
-                printf("%02x", Com_Buf[i]);
-            }
-            printf("\r\n");
+            LOG_DEBUG("usbh: Config descriptor captured (%u bytes)", descriptor_length);
 
             config_value = ((PUSB_CFG_DESCR)Com_Buf)->bConfigurationValue;
 
@@ -332,6 +381,7 @@ uint8_t usbh_enumerate_root_device(void)
  */
 uint8_t app_analyze_config_descriptor(uint8_t host_index, uint8_t ep0_size)
 {
+    (void)ep0_size;
     uint8_t status = ERR_SUCCESS;
     uint16_t buffer_index = 0;
     uint8_t interface_count = 0;
@@ -345,7 +395,7 @@ uint8_t app_analyze_config_descriptor(uint8_t host_index, uint8_t ep0_size)
 
         switch (descriptor_type)
         {
-            case DEF_DECR_CONFIG: // Configuration descriptor
+            case DEF_DECR_CONFIG:
             {
                 PUSB_CFG_DESCR cfg = (PUSB_CFG_DESCR)&Com_Buf[buffer_index];
                 HostCtl[host_index].InterfaceNum = 
@@ -353,7 +403,7 @@ uint8_t app_analyze_config_descriptor(uint8_t host_index, uint8_t ep0_size)
                 break;
             }
 
-            case DEF_DECR_INTERFACE: // Interface descriptor
+            case DEF_DECR_INTERFACE:
             {
                 if (interface_count >= DEF_INTERFACE_NUM_MAX)
                 {
@@ -362,16 +412,12 @@ uint8_t app_analyze_config_descriptor(uint8_t host_index, uint8_t ep0_size)
                 }
 
                 HostCtl[host_index].Interface[interface_count].Type = DEC_UNKNOW;
-
-                // Reset endpoint counters
                 HostCtl[host_index].Interface[interface_count].InEndpNum  = 0;
                 HostCtl[host_index].Interface[interface_count].OutEndpNum = 0;
 
                 buffer_index += descriptor_length;
                 uint8_t input_ep_idx  = 0;
                 uint8_t output_ep_idx = 0;
-
-                // Parse endpoints belonging to this interface
                 while (buffer_index < total_length)
                 {
                     uint8_t len  = Com_Buf[buffer_index];
@@ -387,7 +433,6 @@ uint8_t app_analyze_config_descriptor(uint8_t host_index, uint8_t ep0_size)
 
                         if (ep->bEndpointAddress & 0x80)
                         {
-                            // IN endpoint
                             HostCtl[host_index].Interface[interface_count].InEndpAddr[input_ep_idx]     = ep_addr;
                             HostCtl[host_index].Interface[interface_count].InEndpType[input_ep_idx]     = ep->bmAttributes;
                             HostCtl[host_index].Interface[interface_count].InEndpSize[input_ep_idx]     = ep->wMaxPacketSizeL | ((uint16_t)ep->wMaxPacketSizeH << 8);
@@ -397,7 +442,6 @@ uint8_t app_analyze_config_descriptor(uint8_t host_index, uint8_t ep0_size)
                         }
                         else
                         {
-                            // OUT endpoint
                             HostCtl[host_index].Interface[interface_count].OutEndpAddr[output_ep_idx] = ep_addr;
                             HostCtl[host_index].Interface[interface_count].OutEndpType[output_ep_idx] = ep->bmAttributes;
                             HostCtl[host_index].Interface[interface_count].OutEndpSize[output_ep_idx] = ep->wMaxPacketSizeL | ((uint16_t)ep->wMaxPacketSizeH << 8);
@@ -407,7 +451,6 @@ uint8_t app_analyze_config_descriptor(uint8_t host_index, uint8_t ep0_size)
                     }
                     else if (type == DEF_DECR_HID)
                     {
-                        // HID descriptor
                         PUSB_HID_DESCR hid_desc = (PUSB_HID_DESCR)&Com_Buf[buffer_index];
                         HostCtl[host_index].Interface[interface_count].HidDescLen = hid_desc->wDescriptorLengthL | ((uint16_t)hid_desc->wDescriptorLengthH << 8);
                     }
@@ -421,7 +464,6 @@ uint8_t app_analyze_config_descriptor(uint8_t host_index, uint8_t ep0_size)
 
             default:
             {
-                // Unknown descriptor: skip
                 break;
             }
         }
@@ -449,88 +491,73 @@ uint8_t usbh_get_string_descriptors(uint8_t ep0_size)
 
     if (Com_Buf[6])
     {
-        LOG_DEBUG("USB: Get StringDesc4: ");
+        LOG_DEBUG("usbh: get StringDesc4: ");
         status = USBFSH_GetStrDescr(ep0_size, Com_Buf[6], Com_Buf, &descriptor_size);
         if (status == ERR_SUCCESS)
         {
-            memset(string_descriptor.USBD_StringDescriptor, 0, descriptor_size);
-            memcpy(string_descriptor.USBD_StringDescriptor, Com_Buf, descriptor_size);
-            string_descriptor.USBD_StringDescriptorSize = descriptor_size;
-
+            assign_usb_string_descriptor(&string_descriptor, Com_Buf, descriptor_size);
             USBD_StringDescriptor[3] = string_descriptor;
         }
         else
         {
-            LOG_ERROR("USB: StringDesc4 err(%02x)", status);
+            LOG_ERROR("usbh: stringdesc4 err(%02x)", status);
         }
     }
 
-    LOG_DEBUG("USB: Get StringDesc0 (lang descriptor), id=%u: ", 0);
+    LOG_DEBUG("usbh: get StringDesc0 (lang descriptor), id=%u: ", 0);
     status = USBFSH_GetStrDescr(ep0_size, 0, Com_Buf, &descriptor_size);
     if (status == ERR_SUCCESS)
     {
-        memset(string_descriptor.USBD_StringDescriptor, 0, Com_Buf[0]);
-        memcpy(string_descriptor.USBD_StringDescriptor, Com_Buf, Com_Buf[0]);
-        string_descriptor.USBD_StringDescriptorSize = Com_Buf[0];
-
+        assign_usb_string_descriptor(&string_descriptor, Com_Buf, Com_Buf[0]);
         USBD_StringDescriptor[0] = string_descriptor;
     }
     else
     {
-        LOG_ERROR("USB: StringDesc0 Err(%02x)", status);
+        LOG_ERROR("usbh: stringdesc0 err(%02x)", status);
     }
 
     if (DevDesc_Buf[14])
     {
-        LOG_DEBUG("USB: Get StringDesc1, id=%u: ", DevDesc_Buf[14]);
+        LOG_DEBUG("usbh: get StringDesc1, id=%u: ", DevDesc_Buf[14]);
         status = USBFSH_GetStrDescr(ep0_size, DevDesc_Buf[14], Com_Buf, &descriptor_size);
         if (status == ERR_SUCCESS)
         {
-            memset(string_descriptor.USBD_StringDescriptor, 0, Com_Buf[0]);
-            memcpy(string_descriptor.USBD_StringDescriptor, Com_Buf, Com_Buf[0]);
-            string_descriptor.USBD_StringDescriptorSize = Com_Buf[0];
-
+            assign_usb_string_descriptor(&string_descriptor, Com_Buf, Com_Buf[0]);
             USBD_StringDescriptor[1] = string_descriptor;
         }
         else
         {
-            LOG_ERROR("USB: StringDesc1 Err(%02x)", status);
+            LOG_ERROR("usbh: stringdesc1 err(%02x)", status);
         }
     }
 
     if (DevDesc_Buf[15])
     {
-        LOG_DEBUG("USB: Get StringDesc2: ");
+        LOG_DEBUG("usbh: get StringDesc2: ");
         status = USBFSH_GetStrDescr(ep0_size, DevDesc_Buf[15], Com_Buf, &descriptor_size);
         if (status == ERR_SUCCESS)
         {
-            memset(string_descriptor.USBD_StringDescriptor, 0, Com_Buf[0]);
-            memcpy(string_descriptor.USBD_StringDescriptor, Com_Buf, Com_Buf[0]);
-            string_descriptor.USBD_StringDescriptorSize = Com_Buf[0];
-
+            assign_usb_string_descriptor(&string_descriptor, Com_Buf, Com_Buf[0]);
             USBD_StringDescriptor[2] = string_descriptor;
         }
         else
         {
-            LOG_ERROR("USB: StringDesc2 Err(%02x)", status);
+            LOG_ERROR("usbh: stringdesc2 err(%02x)", status);
         }
     }
 
     if (DevDesc_Buf[16])
     {
-        LOG_DEBUG("USB: Get StringDesc3: ");
+        LOG_DEBUG("usbh: get StringDesc3: ");
         status = USBFSH_GetStrDescr(ep0_size, DevDesc_Buf[16], Com_Buf, &descriptor_size);
         if (status == ERR_SUCCESS)
         {
-            memset(string_descriptor.USBD_StringDescriptor, 0, Com_Buf[0]);
-            memcpy(string_descriptor.USBD_StringDescriptor, Com_Buf, Com_Buf[0]);
-            string_descriptor.USBD_StringDescriptorSize = Com_Buf[0];
-
+            assign_usb_string_descriptor(&string_descriptor, Com_Buf, Com_Buf[0]);
             USBD_StringDescriptor[3] = string_descriptor;
         }
         else
         {
-            LOG_ERROR("USB: StringDesc3 Err(%02x)", status);
+            LOG_ERROR("usbh: stringdesc3 err(%02x)", status);
         }
     }
     return ERR_SUCCESS;
@@ -581,3 +608,8 @@ uint8_t usbh_test(void)
     }
     return 0;
 }
+
+
+
+
+

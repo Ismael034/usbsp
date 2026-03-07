@@ -198,24 +198,24 @@ static void log_parsed_eeprom_tlv(const eeprom_tlv_info_t *info)
         return;
     }
 
-    LOG_INFO("EEPROM TLV: records=%u unknown=%u", info->record_count, info->unknown_count);
-    if (info->has_vid) LOG_INFO("EEPROM TLV: vid=0x%04X (%u)", info->vid, info->vid);
-    if (info->has_pid) LOG_INFO("EEPROM TLV: pid=0x%04X (%u)", info->pid, info->pid);
-    if (info->has_bcd_device) LOG_INFO("EEPROM TLV: bcdDevice=0x%04X", info->bcd_device);
-    if (info->has_max_power_ma) LOG_INFO("EEPROM TLV: maxPowerMa=%u", info->max_power_ma);
+    LOG_INFO("eeprom: records=%u unknown=%u", info->record_count, info->unknown_count);
+    if (info->has_vid) LOG_INFO("eeprom: vid=0x%04X (%u)", info->vid, info->vid);
+    if (info->has_pid) LOG_INFO("eeprom: pid=0x%04X (%u)", info->pid, info->pid);
+    if (info->has_bcd_device) LOG_INFO("eeprom: bcdDevice=0x%04X", info->bcd_device);
+    if (info->has_max_power_ma) LOG_INFO("eeprom: maxPowerMa=%u", info->max_power_ma);
     if (info->has_flags) {
-        LOG_INFO("EEPROM TLV: flags=0x%02X", info->flags);
-        LOG_INFO("EEPROM TLV: selfPowered=%u remoteWakeup=%u bootConnected=%u captureOnBoot=%u",
+        LOG_INFO("eeprom: flags=0x%02X", info->flags);
+        LOG_INFO("eeprom: selfPowered=%u remoteWakeup=%u bootConnected=%u captureOnBoot=%u",
                  (info->flags & TLV_FLAG_SELF_POWERED) ? 1u : 0u,
                  (info->flags & TLV_FLAG_REMOTE_WAKEUP) ? 1u : 0u,
                  (info->flags & TLV_FLAG_BOOT_CONNECTED) ? 1u : 0u,
                  (info->flags & TLV_FLAG_CAPTURE_ON_BOOT) ? 1u : 0u);
     }
-    if (info->has_attach_delay_ms) LOG_INFO("EEPROM TLV: attachDelayMs=%u", info->attach_delay_ms);
-    if (info->has_capture_max_bytes) LOG_INFO("EEPROM TLV: captureMaxBytes=%u", info->capture_max_bytes);
-    if (info->has_manufacturer) LOG_INFO("EEPROM TLV: manufacturer=\"%s\"", info->manufacturer);
-    if (info->has_product) LOG_INFO("EEPROM TLV: product=\"%s\"", info->product);
-    if (info->has_serial) LOG_INFO("EEPROM TLV: serial=\"%s\"", info->serial);
+    if (info->has_attach_delay_ms) LOG_INFO("eeprom: attachDelayMs=%u", info->attach_delay_ms);
+    if (info->has_capture_max_bytes) LOG_INFO("eeprom: captureMaxBytes=%u", info->capture_max_bytes);
+    if (info->has_manufacturer) LOG_INFO("eeprom: manufacturer=\"%s\"", info->manufacturer);
+    if (info->has_product) LOG_INFO("eeprom: product=\"%s\"", info->product);
+    if (info->has_serial) LOG_INFO("eeprom: serial=\"%s\"", info->serial);
 }
 
 /*********************************************************************
@@ -381,11 +381,11 @@ void AT24C02_write_one_byte(uint16_t write_address, uint8_t data_to_write)
     while (!I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_BYTE_TRANSMITTED));
 #elif (Address_Lenth == Address_16bit)
     I2C_SendData(I2C2, (uint8_t)(write_address >> 8));
-    LOG_DEBUG("EEPROM: sent high byte of address: 0x%02X", (uint8_t)(write_address >> 8));
+    LOG_DEBUG("eeprom: sent high byte of address: 0x%02X", (uint8_t)(write_address >> 8));
     while (!I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_BYTE_TRANSMITTED));
 
     I2C_SendData(I2C2, (uint8_t)(write_address & 0x00FF));
-    LOG_DEBUG("EEPROM: sent low byte of address: 0x%02X", (uint8_t)(write_address & 0x00FF));
+    LOG_DEBUG("eeprom: sent low byte of address: 0x%02X", (uint8_t)(write_address & 0x00FF));
     while (!I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_BYTE_TRANSMITTED));
 #endif
 
@@ -462,15 +462,15 @@ void AT24C02_read_usb_info()
         log_parsed_eeprom_tlv(&info);
         vid = info.has_vid ? info.vid : 0;
         pid = info.has_pid ? info.pid : 0;
-        LOG_INFO("EEPROM: effective VID=0x%04X PID=0x%04X", vid, pid);
+        LOG_INFO("eeprom: effective VID=0x%04X PID=0x%04X", vid, pid);
         return;
     }
 
-    LOG_WARN("EEPROM: TLV parse failed, using legacy fixed VID/PID layout");
+    LOG_WARN("eeprom: TLV parse failed, using legacy fixed VID/PID layout");
     vid = ((uint16_t)raw[EEPROM_ADDR_DIV] << 8) | raw[EEPROM_ADDR_DIV + 1];
     pid = ((uint16_t)raw[EEPROM_ADDR_PID] << 8) | raw[EEPROM_ADDR_PID + 1];
-    LOG_INFO("EEPROM legacy: VID=0x%04X (%u)", vid, vid);
-    LOG_INFO("EEPROM legacy: PID=0x%04X (%u)", pid, pid);
+    LOG_INFO("eeprom legacy: VID=0x%04X (%u)", vid, vid);
+    LOG_INFO("eeprom legacy: PID=0x%04X (%u)", pid, pid);
 }
 
 /*********************************************************************
@@ -497,3 +497,4 @@ uint8_t AT24C02_test(void)
     free(read_buffer);
     return result == 0;
 }
+
