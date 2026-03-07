@@ -208,12 +208,12 @@ void user_btn_handler(void)
     uint8_t s;
 
     user_led_toggle();
-    LOG_INFO("Button pressed");
+    LOG_INFO("user: button pressed");
     s = USBFSH_CheckRootHubPortStatus(RootHubDev.bStatus); // Check USB device connection or disconnection
 
     if(s == ROOT_DEV_CONNECTED || s == ROOT_DEV_FAILED)
     {
-        LOG_INFO("USB Port Dev In.");
+        LOG_INFO("usb: port dev in");
 
         RootHubDev.bStatus = ROOT_DEV_CONNECTED;
         RootHubDev.DeviceIndex = DEF_USBFS_PORT_INDEX * DEF_ONE_USB_SUP_DEV_TOTAL;
@@ -222,16 +222,16 @@ void user_btn_handler(void)
         if(s == ERR_SUCCESS)
         {
             if (write_all_tlv_to_eeprom() == 0u) {
-                LOG_INFO("EEPROM TLV write OK");
+                LOG_INFO("eeprom: write OK");
                 AT24C02_read_usb_info();
             } else {
-                LOG_ERROR("EEPROM TLV write failed");
+                LOG_ERROR("eeprom: write failed");
             }
         } else {
-            LOG_ERROR("Button enumerate failed: %u", s);
+            LOG_ERROR("user: enumerate failed %u", s);
         }
     } else {
-        LOG_WARN("No USB device connected, skip TLV write");
+        LOG_WARN("usb: no device connected, skip tlv write");
     }
     user_led_toggle();
 }
@@ -254,3 +254,6 @@ void EXTI9_5_IRQHandler(void)
         EXTI_ClearITPendingBit(BUTTON_EXTI_LINE);
     }
 }
+
+
+

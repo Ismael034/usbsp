@@ -46,7 +46,7 @@ void HardFault_Handler(void)
   g_hardfault_mepc = __get_MEPC();
   g_hardfault_mtval = __get_MTVAL();
 
-  LOG_ERROR("HARDFAULT: mcause=0x%08lX mepc=0x%08lX mtval=0x%08lX",
+  LOG_ERROR("hardfault: mcause=0x%08lX mepc=0x%08lX mtval=0x%08lX",
             (unsigned long)g_hardfault_mcause,
             (unsigned long)g_hardfault_mepc,
             (unsigned long)g_hardfault_mtval);
@@ -55,5 +55,6 @@ void HardFault_Handler(void)
   {
   }
 }
+
 
 

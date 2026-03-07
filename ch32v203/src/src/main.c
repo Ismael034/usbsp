@@ -18,7 +18,7 @@ static uint8_t reenum_requested = 0;
 
 static void stop_relay_communication(void)
 {
-    // Drop D+/D- to force host-side re-enumeration on next valid connection.
+
     usb_hw_set_port(DISABLE, DISABLE);
     bDeviceState = UNCONNECTED;
 
@@ -41,42 +41,42 @@ static void log_reset_cause(uint32_t rstsckr_snapshot)
 {
     bool matched = false;
 
-    LOG_INFO("Reset flags (RSTSCKR): 0x%08lX", (unsigned long)rstsckr_snapshot);
+    LOG_INFO("reset flags (rstsckr): 0x%08lX", (unsigned long)rstsckr_snapshot);
 
     if ((rstsckr_snapshot & RCC_PORRSTF) != 0U)
     {
-        LOG_INFO("Reset cause: POR/PDR (power reset)");
+        LOG_INFO("reset cause: POR/PDR (power reset)");
         matched = true;
     }
     if ((rstsckr_snapshot & RCC_PINRSTF) != 0U)
     {
-        LOG_INFO("Reset cause: NRST pin");
+        LOG_INFO("reset cause: NRST pin");
         matched = true;
     }
     if ((rstsckr_snapshot & RCC_SFTRSTF) != 0U)
     {
-        LOG_INFO("Reset cause: software reset");
+        LOG_INFO("reset cause: software reset");
         matched = true;
     }
     if ((rstsckr_snapshot & RCC_IWDGRSTF) != 0U)
     {
-        LOG_INFO("Reset cause: IWDG watchdog");
+        LOG_INFO("reset cause: IWDG watchdog");
         matched = true;
     }
     if ((rstsckr_snapshot & RCC_WWDGRSTF) != 0U)
     {
-        LOG_INFO("Reset cause: WWDG watchdog");
+        LOG_INFO("reset cause: WWDG watchdog");
         matched = true;
     }
     if ((rstsckr_snapshot & RCC_LPWRRSTF) != 0U)
     {
-        LOG_INFO("Reset cause: low-power reset");
+        LOG_INFO("reset cause: low-power reset");
         matched = true;
     }
 
     if (!matched)
     {
-        LOG_INFO("Reset cause: unknown (no reset flags set)");
+        LOG_INFO("reset cause: unknown (no reset flags set)");
     }
 }
 
@@ -108,11 +108,11 @@ static uint8_t init_usb_interrupts(void)
 /* Initialize user peripherals */
 static uint8_t init_peripherals(void)
 {
-    LOG_INFO("Enabling the USER button");
+    LOG_INFO("sys: enabling the USER button");
     user_btn_init();
-    LOG_INFO("Enabling the USER LED");
+    LOG_INFO("sys: enabling the USER LED");
     user_led_init();
-    LOG_INFO("Reading EEPROM");
+    LOG_INFO("sys: reading EEPROM");
     AT24C02_init();
     AT24C02_read_usb_info();
     return ERR_SUCCESS;
@@ -129,7 +129,7 @@ static uint8_t init_system(void)
     tim2_init((SystemCoreClock / 100) - 1);
 
     print_banner();
-    LOG_INFO("SystemClk: %ld", SystemCoreClock);
+    LOG_INFO("systemclk: %ld", SystemCoreClock);
     log_reset_cause(reset_flags);
     RCC_ClearFlag();
 
@@ -150,12 +150,12 @@ static void log_device_type(uint8_t device_type)
 {
     switch (device_type)
     {
-        case USB_DEV_CLASS_HID:      LOG_INFO("Root Device Is HID"); break;
-        case USB_DEV_CLASS_STORAGE:  LOG_INFO("Root Device Is Storage"); break;
-        case USB_DEV_CLASS_PRINTER:  LOG_INFO("Root Device Is Printer"); break;
-        case USB_DEV_CLASS_VEN_SPEC: LOG_INFO("Root Device Is Vendor Specific"); break;
-        case USB_DEV_CLASS_HUB:      LOG_INFO("Root Device Is HUB"); break;
-        default:                     LOG_INFO("Root Device Class %d", device_type); break;
+        case USB_DEV_CLASS_HID:      LOG_INFO("usbh: root device is HID"); break;
+        case USB_DEV_CLASS_STORAGE:  LOG_INFO("usbh: root device is storage"); break;
+        case USB_DEV_CLASS_PRINTER:  LOG_INFO("usbh: root device is printer"); break;
+        case USB_DEV_CLASS_VEN_SPEC: LOG_INFO("usbh: root device is vendor specific"); break;
+        case USB_DEV_CLASS_HUB:      LOG_INFO("usbh: root device is hub"); break;
+        default:                     LOG_INFO("usbh: root device class %d", device_type); break;
     }
 }
 
@@ -167,18 +167,18 @@ static uint8_t handle_device_connection(void)
     uint8_t status = usbh_enumerate_root_device();
     if (status == ERR_USB_DISCON)
     {
-        LOG_WARN("Device disconnected during enumeration");
+        LOG_WARN("usbh: device disconnected during enumeration");
         handle_device_disconnection();
         return status;
     }
     if (status != ERR_SUCCESS)
     {
-        LOG_ERROR("Enumeration failed with error code: %x", status);
+        LOG_ERROR("usbh: enumeration failed with error code %x", status);
         RootHubDev.bStatus = ROOT_DEV_FAILED;
         return status;
     }
 
-    LOG_DEBUG("success, device type: %d", RootHubDev.bType);
+    LOG_DEBUG("usbh: success, device type %d", RootHubDev.bType);
     log_device_type(RootHubDev.bType);
 
     LOG_INFO("usb: Initializing USB driver");
@@ -189,7 +189,7 @@ static uint8_t handle_device_connection(void)
     stop_relay_communication();
     usb_relay_driver_init();
     LOG_INFO("usb: Relay side initialized");
-    LOG_DEBUG("Number of interfaces: %d", HostCtl[index].InterfaceNum);
+    LOG_DEBUG("number of interfaces: %d", HostCtl[index].InterfaceNum);
     RootHubDev.bStatus = ROOT_DEV_SUCCESS;
     reenum_requested = 0u;
     return ERR_SUCCESS;
@@ -205,8 +205,8 @@ static void handle_device_disconnection(void)
     memset(&RootHubDev, 0, sizeof(ROOT_HUB_DEVICE));
     reenum_requested = 0u;
 
-    LOG_INFO("USB Port Dev Out");
-    LOG_INFO("Relay stopped; waiting for a new USB device connection");
+    LOG_INFO("usb: port dev out");
+    LOG_INFO("usb: relay stopped; waiting for a new device connection");
 }
 
 /* Handle endpoint TX transfer */
@@ -217,7 +217,7 @@ static uint8_t handle_endpoint_tx(uint8_t index, uint8_t ep_out, uint8_t *temp_b
 
     if (index >= DEF_ONE_USB_SUP_DEV_TOTAL)
     {
-        LOG_ERROR("Invalid index: %d or endpoint: %d", index, ep_out);
+        LOG_ERROR("usb: invalid index %d or endpoint %d", index, ep_out);
         return ERR_USB_UNKNOWN;
     }
     if (ep_out == 0)
@@ -230,7 +230,7 @@ static uint8_t handle_endpoint_tx(uint8_t index, uint8_t ep_out, uint8_t *temp_b
     }
     if (temp_buf == NULL || len == NULL)
     {
-        LOG_ERROR("Null buffer or length pointer");
+        LOG_ERROR("usb: null buffer or length pointer");
         return ERR_USB_UNKNOWN;
     }
 
@@ -241,16 +241,33 @@ static uint8_t handle_endpoint_tx(uint8_t index, uint8_t ep_out, uint8_t *temp_b
 
     while (peek_packet_for_main(ep_out, temp_buf, len) == 0)
     {
+        LOG_DEBUG("usb: ep%u TX dequeue len=%u depth_before=%u pending=%u", ep_out,
+                  (unsigned)*len, (unsigned)isr_out_queue[ep_out].count,
+                  (unsigned)isr_out_pending);
+
         Host_OutBusy[ep_out] = 1;
         tx_status = USBFSH_SendEndpData(ep_out, &Host_OutToggle[ep_out], temp_buf, *len);
         Host_OutBusy[ep_out] = 0;
 
+        LOG_DEBUG("usb: ep%u TX status=0x%02X", ep_out, tx_status);
+
         if (tx_status == ERR_SUCCESS)
         {
             (void)pop_packet_for_main(ep_out);
+            LOG_DEBUG("usb: ep%u TX pop depth_after=%u pending=%u", ep_out,
+                      (unsigned)isr_out_queue[ep_out].count, (unsigned)isr_out_pending);
+
             if (isr_queue_has_space(ep_out))
             {
                 SetEPRxStatus(ep_out, EP_RX_VALID);
+                LOG_DEBUG("usb: ep%u RX->VALID (space available depth=%u)", ep_out,
+                          (unsigned)isr_out_queue[ep_out].count);
+            }
+            else
+            {
+                SetEPRxStatus(ep_out, EP_RX_NAK);
+                LOG_DEBUG("usb: ep%u RX->NAK (queue full depth=%u)", ep_out,
+                          (unsigned)isr_out_queue[ep_out].count);
             }
             sent_any = 1;
             continue;
@@ -258,20 +275,20 @@ static uint8_t handle_endpoint_tx(uint8_t index, uint8_t ep_out, uint8_t *temp_b
 
         if (tx_status == ERR_USB_DISCON)
         {
-            LOG_INFO("Device disconnected from host port");
+            LOG_INFO("usbh: device disconnected from host port");
                 handle_device_disconnection();
                 return tx_status;
         }
 
         if (tx_status == (USB_PID_STALL | ERR_USB_TRANSFER))
         {
-            LOG_WARN("Host OUT endpoint %u stalled, clearing halt", ep_out);
+            LOG_WARN("usbh: host OUT endpoint %u stalled, clearing halt", ep_out);
             (void)USBFSH_ClearEndpStall(RootHubDev.bEp0MaxPks, ep_out);
             Host_OutToggle[ep_out] = 0x00;
         }
         else if (tx_status != (USB_PID_NAK | ERR_USB_TRANSFER))
         {
-            LOG_DEBUG("Host OUT endpoint %u TX error: %u", ep_out, tx_status);
+            LOG_DEBUG("usbh: host OUT endpoint %u tx error %u", ep_out, tx_status);
         }
         break;
     }
@@ -285,7 +302,7 @@ static uint8_t handle_endpoint_rx(uint8_t index, uint8_t intf_num, uint8_t ep_nu
 {
     if (index >= DEF_ONE_USB_SUP_DEV_TOTAL || intf_num >= HostCtl[index].InterfaceNum)
     {
-        LOG_ERROR("Invalid index: %d or interface: %d", index, intf_num);
+        LOG_ERROR("usb: invalid index %d or interface %d", index, intf_num);
         return ERR_USB_UNKNOWN;
     }
     if (bDeviceState != CONFIGURED || _GetEPTxStatus(ep_addr) != EP_TX_NAK)
@@ -310,23 +327,24 @@ static uint8_t handle_endpoint_rx(uint8_t index, uint8_t intf_num, uint8_t ep_nu
         status = USBD_ENDP_DataUp(ep_addr, Com_Buf, Com_Buf_Len);
         if (status != ERR_SUCCESS)
         {
-            LOG_DEBUG("USBD_ENDP_DataUp failed on ep %d: %d", ep_addr, status);
+            LOG_DEBUG("usbd: endp_dataup failed on ep %d, status %d", ep_addr, status);
             HostCtl[index].ErrorCount++;
         }
     } else if (status == ERR_USB_DISCON)
     {
-        LOG_INFO("Device disconnected from host port");
+        LOG_INFO("usbh: device disconnected from host port");
         handle_device_disconnection();
     } else if (status == (USB_PID_STALL | ERR_USB_TRANSFER))
     {
-        LOG_ERROR("Abnormal event on host port endpoint %d", ep_addr);
+        LOG_ERROR("usbh: abnormal event on host port endpoint %d", ep_addr);
         USBFSH_ClearEndpStall(RootHubDev.bEp0MaxPks, ep_addr | 0x80);
         HostCtl[index].Interface[intf_num].InEndpTog[ep_num] = 0x00;
         HostCtl[index].ErrorCount++;
-        if (HostCtl[index].ErrorCount >= 10)
+        if (HostCtl[index].ErrorCount >= 20)
         {
-            LOG_INFO("Too many errors, scheduling re-enumeration");
+            LOG_INFO("usbh: too many errors, scheduling re-enumeration");
             reenum_requested = 1u;
+            HostCtl[index].ErrorCount = 0;
         }
     }
     return status;
@@ -409,7 +427,7 @@ int main(void)
 {
     if (init_system() != ERR_SUCCESS)
     {
-        LOG_ERROR("System initialization failed");
+        LOG_ERROR("sys: system initialization failed");
         while (1); /* Halt on failure */
     }
 
@@ -419,7 +437,7 @@ int main(void)
 
         if (status == ROOT_DEV_CONNECTED)
         {
-            LOG_INFO("USB Port Dev In");
+            LOG_INFO("usb: port dev in");
             RootHubDev.bStatus = ROOT_DEV_CONNECTED;
             RootHubDev.DeviceIndex = DEF_USBFS_PORT_INDEX * DEF_ONE_USB_SUP_DEV_TOTAL;
             handle_device_connection();
@@ -445,3 +463,7 @@ int main(void)
         }
     }
 }
+
+
+
+

@@ -124,9 +124,6 @@ void usb_relay_status_in(void)
     if (ctrl_out_data_pending) {
         ctrl_out_data_pending = 0;
         ctrl_out_forward_pending = 1;
-        // Defer host-side control OUT transfer to main loop.
-        // EP0 state is applied by CTR_LP from SaveRState/SaveTState after callbacks.
-        // Write SaveRState so EP0 RX actually remains NAK until usb_relay_poll().
         SaveRState = EP_RX_NAK;
     }
 }
@@ -153,7 +150,7 @@ RESULT usb_relay_data_setup(uint8_t request_no)
 {
     (void)request_no;
 
-    LOG_DEBUG("USB: usbr data request %x, recipient %02X, wLen=%u", 
+    LOG_DEBUG("usb: usbr data request %x, recipient %02X, wLen=%u", 
                       pInformation->USBbRequest, 
                       pInformation->USBbmRequestType,
                       pInformation->USBwLengths.w);
@@ -175,7 +172,7 @@ RESULT usb_relay_nodata_setup(uint8_t request_no)
     (void)request_no;
     ctrl_out_data_pending = 0u;
     ctrl_out_forward_pending = 0u;
-    LOG_DEBUG("USB: usbr nodata request no %x, ty %x", pInformation->USBbRequest, Type_Recipient);
+    LOG_DEBUG("usb: usbr nodata request no %x, ty %x", pInformation->USBbRequest, Type_Recipient);
     usb_relay_nodata_generic();
     return USB_SUCCESS;
 }
@@ -194,7 +191,7 @@ static void usb_relay_nodata_generic(void)
     s = USBFSH_CtrlTransfer(relay_get_ep0_size(), NULL, &plen);
     if (s != ERR_SUCCESS)
     {
-        LOG_DEBUG("USB: usbr nodata transfer failed: req=%02x type=%02x val=%04x idx=%04x len=%u st=%u",
+        LOG_DEBUG("usb: usbr nodata transfer failed: req=%02x type=%02x val=%04x idx=%04x len=%u st=%u",
                   setup.bRequest,
                   setup.bRequestType,
                   setup.wValue,
@@ -204,7 +201,7 @@ static void usb_relay_nodata_generic(void)
     }
     else
     {
-        LOG_DEBUG("USB: usbr done control transfer (nodata)");
+        LOG_DEBUG("usb: usbr done control transfer (nodata)");
     }
 }
 
@@ -248,23 +245,18 @@ uint8_t *usb_relay_data_generic(uint16_t length)
             s = USBFSH_CtrlTransfer(ep0_size, Setup_Buf, &Setup_Buf_Len);
             if (s != ERR_SUCCESS)
             {
-                LOG_DEBUG("USB: usbr IN transfer failed: req=%02x type=%02x val=%04x idx=%04x len=%u st=%u",
+                LOG_DEBUG("usb: usbr IN transfer failed: req=%02x type=%02x val=%04x idx=%04x len=%u st=%u",
                           setup.bRequest,
                           setup.bRequestType,
                           setup.wValue,
                           setup.wIndex,
                           setup.wLength,
                           s);
-                // Propagate transfer failure as a control STALL without
-                // returning a NULL data pointer (prevents EP0 copy hardfault).
                 Setup_Buf_Len = 0u;
                 pInformation->Ctrl_Info.Usb_wLength = 0u;
                 return Setup_Buf;
             }
 
-            // USBASP SETLONGADDRESS can complete with short/zero IN data.
-            // This USB device stack stalls if class data length becomes 0, so
-            // return a single status byte to complete control transfer cleanly.
             if ((setup.bRequest == USBASP_FUNC_SETLONGADDRESS) &&
                 (setup.wLength > 0u) &&
                 (Setup_Buf_Len == 0u))
@@ -275,8 +267,6 @@ uint8_t *usb_relay_data_generic(uint16_t length)
         }
     }
 
-    // OUT: Return Setup_Buf for stack to copy PC data during DataStageOut
-    // IN: Return descriptor for stack to send to PC
     if (is_out)
     {
         if (length == 0u) {
@@ -321,7 +311,7 @@ uint8_t usb_relay_poll(void)
 
     if (s != ERR_SUCCESS)
     {
-        LOG_DEBUG("USB: usbr deferred OUT transfer failed: req=%02x type=%02x val=%04x idx=%04x len=%u st=%u",
+        LOG_DEBUG("usb: usbr deferred OUT transfer failed: req=%02x type=%02x val=%04x idx=%04x len=%u st=%u",
                   pInformation->USBbRequest,
                   pInformation->USBbmRequestType,
                   (uint16_t)(pInformation->USBwValues.bw.bb0 | (pInformation->USBwValues.bw.bb1 << 8)),
@@ -357,7 +347,7 @@ void usb_relay_set_configuration(void)
 
     if (USBFSH_SetUsbConfig(ep0_size, cfg) != ERR_SUCCESS)
     {
-        LOG_DEBUG("USB: usbr failed to set configuration");
+        LOG_DEBUG("usb: usbr failed to set configuration");
         return;
     }
 
@@ -374,3 +364,6 @@ void usb_relay_set_device_feature(void)
 void usb_relay_clear_feature(void)
 {
 }
+
+
+
