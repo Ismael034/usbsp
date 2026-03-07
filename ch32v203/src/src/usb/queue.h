@@ -6,7 +6,7 @@
 
 #define ISR_Q_DEPTH   8
 #define MAX_PKT_SZ    64
-#define MAX_EP_NUM    4
+#define MAX_EP_NUM    8
 
 
 typedef struct {
@@ -34,3 +34,4 @@ uint8_t dequeue_packet_for_main(uint8_t ep_num, uint8_t *out_buf, uint16_t *out_
 uint8_t isr_queue_has_space(uint8_t ep_num);
 
 #endif
+
