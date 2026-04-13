@@ -98,7 +98,7 @@ export default function App({ colorMode = "light", onToggleColorMode = null }) {
               variant="contained"
               startIcon={<PowerSettingsNewIcon />}
               onClick={app.connected ? app.disconnect : app.connect}
-              disabled={app.busy}
+              disabled={app.disableConnect}
             >
               {app.connected ? "Disconnect" : "Connect"}
             </Button>
@@ -107,6 +107,12 @@ export default function App({ colorMode = "light", onToggleColorMode = null }) {
       </AppBar>
 
       <Container sx={{ py: { xs: 2.5, md: 4 } }}>
+        {!app.webUsbSupported ? (
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            {app.webUsbUnavailableReason}
+          </Alert>
+        ) : null}
+
         <Card variant="outlined" sx={{ overflow: "hidden" }}>
           <CardHeader
             title="Device Control"

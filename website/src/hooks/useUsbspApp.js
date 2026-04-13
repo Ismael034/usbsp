@@ -35,6 +35,34 @@ const CMD_GET_VERSIONS = 0x10;
 const CMD_GET_ACTIVE_USB_INFO = 0x11;
 const CMD_CAPTURE_POLL = 0x20;
 
+function getWebUsbSupport() {
+  if (typeof navigator === "undefined") {
+    return {
+      supported: false,
+      reason: "WebUSB is not available in this environment."
+    };
+  }
+
+  if (navigator.usb) {
+    return {
+      supported: true,
+      reason: ""
+    };
+  }
+
+  if (typeof window !== "undefined" && window.isSecureContext === false) {
+    return {
+      supported: false,
+      reason: "WebUSB requires a secure context. Open this site over HTTPS or localhost."
+    };
+  }
+
+  return {
+    supported: false,
+    reason: "WebUSB is not supported by this browser. Use a Chromium-based desktop browser such as Chrome or Edge."
+  };
+}
+
 function normalizeConfig(config) {
   return {
     vid: sanitizeHex4Input(config.vid),
@@ -275,6 +303,7 @@ export function useUsbspApp({ log, notify, reportError }) {
   const [eepromReadResult, setEepromReadResult] = useState("");
   const [rawResponse, setRawResponse] = useState("");
   const [spiResponse, setSpiResponse] = useState("");
+  const webUsbSupport = getWebUsbSupport();
 
   const rawError = useMemo(() => validateRawHexInput(raw), [raw]);
 
@@ -518,6 +547,11 @@ export function useUsbspApp({ log, notify, reportError }) {
   }, [getVersionsNoBusy, log, notify, reportError, withBusy]);
 
   const connect = useCallback(async () => {
+    if (!webUsbSupport.supported) {
+      notify("error", webUsbSupport.reason);
+      return;
+    }
+
     try {
       await withBusy(async () => {
         let device;
@@ -565,7 +599,7 @@ export function useUsbspApp({ log, notify, reportError }) {
     } catch (err) {
       reportError(err, "Failed to connect to the device.");
     }
-  }, [getVersionsNoBusy, log, notify, readConfigNoBusy, reportError, withBusy]);
+  }, [getVersionsNoBusy, log, notify, readConfigNoBusy, reportError, webUsbSupport, withBusy]);
 
   const disconnect = useCallback(async () => {
     try {
@@ -929,7 +963,7 @@ export function useUsbspApp({ log, notify, reportError }) {
     config,
     connected,
     disableActions: busy || !connected || captureRunning,
-    disableConnect: busy || connected,
+    disableConnect: busy || connected || !webUsbSupport.supported,
     eepAddr,
     eepLen,
     eepromReadResult,
@@ -940,6 +974,8 @@ export function useUsbspApp({ log, notify, reportError }) {
     spiResponse,
     usbLookupOpen,
     versions,
+    webUsbSupported: webUsbSupport.supported,
+    webUsbUnavailableReason: webUsbSupport.reason,
     setConfig,
     setEepAddr,
     setEepLen,
