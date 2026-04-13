@@ -706,7 +706,7 @@
 	"flashConfig": {
 		"mcutype": "CH32V20x",
 		"address": "0x08000000",
-		"target_path": "C:/Users/Ismael/Documents/Boards/usbsp/build-ch32v203/ch32v203/ch32v203.hex",
+		"target_path": "obj/CH32V203C8U6.hex",
 		"clkSpeed": "High",
 		"debug_interface_mode": "",
 		"erase": true,
