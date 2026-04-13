@@ -23,6 +23,9 @@ void EXTI9_5_IRQHandler(void) __attribute__((interrupt("WCH-Interrupt-fast")));
 void user_btn_init(void);
 uint8_t user_btn_test(void);
 void user_btn_handler(void);
+uint8_t user_build_current_tlv_image(uint8_t *image, uint16_t image_size, uint16_t *used_len);
+uint8_t user_reset_requested(void);
+void user_clear_reset_request(void);
 
 void user_led_init(void);
 void user_led_toggle(void);

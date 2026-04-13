@@ -7,6 +7,7 @@
 
 uint16_t vid = 0;
 uint16_t pid = 0;
+uint16_t capture_max_bytes = 64u;
 
 #define EEPROM_TOTAL_SIZE        256u
 #define TLV_TYPE_VID             0x01u
@@ -462,15 +463,19 @@ void AT24C02_read_usb_info()
         log_parsed_eeprom_tlv(&info);
         vid = info.has_vid ? info.vid : 0;
         pid = info.has_pid ? info.pid : 0;
+        capture_max_bytes = info.has_capture_max_bytes ? info.capture_max_bytes : 64u;
         LOG_INFO("eeprom: effective VID=0x%04X PID=0x%04X", vid, pid);
+        LOG_INFO("eeprom: effective captureMaxBytes=%u", capture_max_bytes);
         return;
     }
 
     LOG_WARN("eeprom: TLV parse failed, using legacy fixed VID/PID layout");
     vid = ((uint16_t)raw[EEPROM_ADDR_DIV] << 8) | raw[EEPROM_ADDR_DIV + 1];
     pid = ((uint16_t)raw[EEPROM_ADDR_PID] << 8) | raw[EEPROM_ADDR_PID + 1];
+    capture_max_bytes = 64u;
     LOG_INFO("eeprom legacy: VID=0x%04X (%u)", vid, vid);
     LOG_INFO("eeprom legacy: PID=0x%04X (%u)", pid, pid);
+    LOG_INFO("eeprom legacy: captureMaxBytes=%u", capture_max_bytes);
 }
 
 /*********************************************************************

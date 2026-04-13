@@ -1,4 +1,5 @@
 #include "queue.h"
+#include "ch32v20x.h"
 #include <string.h>
 
 isr_queue_t isr_out_queue[MAX_EP_NUM];
@@ -47,11 +48,37 @@ uint8_t pop_packet_for_main(uint8_t ep_num)
     if (ep_num == 0 || ep_num >= MAX_EP_NUM) return 1;
     isr_queue_t *q = &isr_out_queue[ep_num];
 
-    if (q->count == 0) return 1;
+    __disable_irq();
+    if (q->count == 0)
+    {
+        __enable_irq();
+        return 1;
+    }
 
     q->head = (q->head + 1) % ISR_Q_DEPTH;
     q->count--;
     isr_out_pending--;
+    __enable_irq();
+    return 0;
+}
+
+uint8_t pop_packet_for_main_and_check_space(uint8_t ep_num, uint8_t *has_space)
+{
+    if (ep_num == 0 || ep_num >= MAX_EP_NUM || has_space == NULL) return 1;
+    isr_queue_t *q = &isr_out_queue[ep_num];
+
+    __disable_irq();
+    if (q->count == 0)
+    {
+        __enable_irq();
+        return 1;
+    }
+
+    q->head = (q->head + 1) % ISR_Q_DEPTH;
+    q->count--;
+    isr_out_pending--;
+    *has_space = (q->count < ISR_Q_DEPTH) ? 1u : 0u;
+    __enable_irq();
     return 0;
 }
 
@@ -63,6 +90,11 @@ uint8_t dequeue_packet_for_main(uint8_t ep_num, uint8_t *out_buf, uint16_t *out_
 
 uint8_t isr_queue_has_space(uint8_t ep_num)
 {
+    uint8_t has_space;
+
     if (ep_num == 0 || ep_num >= MAX_EP_NUM) return 0;
-    return (isr_out_queue[ep_num].count < ISR_Q_DEPTH) ? 1u : 0u;
+    __disable_irq();
+    has_space = (isr_out_queue[ep_num].count < ISR_Q_DEPTH) ? 1u : 0u;
+    __enable_irq();
+    return has_space;
 }

@@ -21,5 +21,6 @@ void tim2_init(uint16_t prescaler);
 
 extern uint16_t vid;
 extern uint16_t pid;
+extern uint16_t capture_max_bytes;
 
 #endif

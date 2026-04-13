@@ -20,6 +20,7 @@ firmware_sources = files(
     # src directory
     'src/src/eeprom/eeprom.c',
     'src/src/external/microtlv/tlv.c',
+    'src/src/spi_link.c',
     'src/src/usb/relay.c',
     'src/src/usb/queue.c',
     'src/src/usb/usb_relay.c',

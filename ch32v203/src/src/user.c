@@ -6,6 +6,7 @@
 #define DEBOUNCE_TICKS (50 * (SystemCoreClock / 1000))
 static volatile uint32_t last_interrupt_time = 0;
 volatile uint8_t button_pressed = 0;
+static volatile uint8_t reset_requested = 0;
 
 #define EEPROM_TOTAL_SIZE        256u
 #define TLV_TYPE_VID             0x01u
@@ -85,11 +86,10 @@ static uint8_t tlv_append_str(uint8_t **p, uint32_t *left, uint8_t type, const c
     return (tlv_format(p, left, type, n, (uint8_t *)s) == TLV_RESULT_SUCCESS) ? 0u : 1u;
 }
 
-static uint8_t write_all_tlv_to_eeprom(void)
+uint8_t user_build_current_tlv_image(uint8_t *image, uint16_t image_size, uint16_t *used_len)
 {
-    uint8_t image[EEPROM_TOTAL_SIZE];
     uint8_t *p = image;
-    uint32_t left = EEPROM_TOTAL_SIZE;
+    uint32_t left = image_size;
     uint16_t local_vid = 0;
     uint16_t local_pid = 0;
     uint16_t local_bcd_device = 0;
@@ -102,7 +102,11 @@ static uint8_t write_all_tlv_to_eeprom(void)
     char serial[TLV_TEXT_MAX_LEN + 1];
     const USB_ConfigDescriptor *cfg;
 
-    memset(image, 0xFF, sizeof(image));
+    if (!image || image_size == 0u) {
+        return 1u;
+    }
+
+    memset(image, 0xFF, image_size);
     memset(manufacturer, 0, sizeof(manufacturer));
     memset(product, 0, sizeof(product));
     memset(serial, 0, sizeof(serial));
@@ -136,6 +140,20 @@ static uint8_t write_all_tlv_to_eeprom(void)
     if (tlv_append_str(&p, &left, TLV_TYPE_SERIAL, serial)) return 1u;
 
     if (tlv_format(&p, &left, 0u, 0u, NULL) != TLV_RESULT_SUCCESS) {
+        return 1u;
+    }
+
+    if (used_len) {
+        *used_len = (uint16_t)(image_size - left);
+    }
+    return 0u;
+}
+
+static uint8_t write_all_tlv_to_eeprom(void)
+{
+    uint8_t image[EEPROM_TOTAL_SIZE];
+
+    if (user_build_current_tlv_image(image, EEPROM_TOTAL_SIZE, 0) != 0u) {
         return 1u;
     }
 
@@ -224,6 +242,8 @@ void user_btn_handler(void)
             if (write_all_tlv_to_eeprom() == 0u) {
                 LOG_INFO("eeprom: write OK");
                 AT24C02_read_usb_info();
+                reset_requested = 1u;
+                LOG_INFO("system: reset scheduled after button EEPROM write");
             } else {
                 LOG_ERROR("eeprom: write failed");
             }
@@ -253,6 +273,16 @@ void EXTI9_5_IRQHandler(void)
         }
         EXTI_ClearITPendingBit(BUTTON_EXTI_LINE);
     }
+}
+
+uint8_t user_reset_requested(void)
+{
+    return reset_requested;
+}
+
+void user_clear_reset_request(void)
+{
+    reset_requested = 0u;
 }
 
 
