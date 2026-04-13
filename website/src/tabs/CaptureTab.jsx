@@ -28,6 +28,7 @@ import StopIcon from "@mui/icons-material/Stop";
 import SaveAltIcon from "@mui/icons-material/SaveAlt";
 import DeleteSweepIcon from "@mui/icons-material/DeleteSweep";
 import ShowChartIcon from "@mui/icons-material/ShowChart";
+import KeyboardIcon from "@mui/icons-material/Keyboard";
 import { decodeHidMouse, parseHidMouseReport } from "../lib/hidMouse.js";
 
 function parseHexBytes(hexText) {
@@ -39,70 +40,144 @@ function parseHexBytes(hexText) {
     .filter((value) => Number.isFinite(value) && value >= 0 && value <= 255);
 }
 
-function decodeKeyboard(bytes) {
-  if (bytes.length !== 8) return "Not a boot-keyboard report";
+const KEYBOARD_MODIFIER_MAP = [
+  "Left Ctrl",
+  "Left Shift",
+  "Left Alt",
+  "Left Meta",
+  "Right Ctrl",
+  "Right Shift",
+  "Right Alt",
+  "Right Meta"
+];
 
-  const modifierMap = [
-    "Left Ctrl",
-    "Left Shift",
-    "Left Alt",
-    "Left Meta",
-    "Right Ctrl",
-    "Right Shift",
-    "Right Alt",
-    "Right Meta"
-  ];
-  const keyMap = {
-    0x04: "A",
-    0x05: "B",
-    0x06: "C",
-    0x07: "D",
-    0x08: "E",
-    0x09: "F",
-    0x0a: "G",
-    0x0b: "H",
-    0x0c: "I",
-    0x0d: "J",
-    0x0e: "K",
-    0x0f: "L",
-    0x10: "M",
-    0x11: "N",
-    0x12: "O",
-    0x13: "P",
-    0x14: "Q",
-    0x15: "R",
-    0x16: "S",
-    0x17: "T",
-    0x18: "U",
-    0x19: "V",
-    0x1a: "W",
-    0x1b: "X",
-    0x1c: "Y",
-    0x1d: "Z",
-    0x1e: "1",
-    0x1f: "2",
-    0x20: "3",
-    0x21: "4",
-    0x22: "5",
-    0x23: "6",
-    0x24: "7",
-    0x25: "8",
-    0x26: "9",
-    0x27: "0",
-    0x28: "Enter",
-    0x29: "Escape",
-    0x2a: "Backspace",
-    0x2b: "Tab",
-    0x2c: "Space"
+const KEYBOARD_KEY_LABELS = {
+  0x04: "A",
+  0x05: "B",
+  0x06: "C",
+  0x07: "D",
+  0x08: "E",
+  0x09: "F",
+  0x0a: "G",
+  0x0b: "H",
+  0x0c: "I",
+  0x0d: "J",
+  0x0e: "K",
+  0x0f: "L",
+  0x10: "M",
+  0x11: "N",
+  0x12: "O",
+  0x13: "P",
+  0x14: "Q",
+  0x15: "R",
+  0x16: "S",
+  0x17: "T",
+  0x18: "U",
+  0x19: "V",
+  0x1a: "W",
+  0x1b: "X",
+  0x1c: "Y",
+  0x1d: "Z",
+  0x1e: "1",
+  0x1f: "2",
+  0x20: "3",
+  0x21: "4",
+  0x22: "5",
+  0x23: "6",
+  0x24: "7",
+  0x25: "8",
+  0x26: "9",
+  0x27: "0",
+  0x28: "Enter",
+  0x29: "Escape",
+  0x2a: "Backspace",
+  0x2b: "Tab",
+  0x2c: "Space",
+  0x2d: "-",
+  0x2e: "=",
+  0x2f: "[",
+  0x30: "]",
+  0x31: "\\",
+  0x33: ";",
+  0x34: "'",
+  0x35: "`",
+  0x36: ",",
+  0x37: ".",
+  0x38: "/"
+};
+
+const KEYBOARD_TEXT_MAP = {
+  0x04: { normal: "a", shift: "A" },
+  0x05: { normal: "b", shift: "B" },
+  0x06: { normal: "c", shift: "C" },
+  0x07: { normal: "d", shift: "D" },
+  0x08: { normal: "e", shift: "E" },
+  0x09: { normal: "f", shift: "F" },
+  0x0a: { normal: "g", shift: "G" },
+  0x0b: { normal: "h", shift: "H" },
+  0x0c: { normal: "i", shift: "I" },
+  0x0d: { normal: "j", shift: "J" },
+  0x0e: { normal: "k", shift: "K" },
+  0x0f: { normal: "l", shift: "L" },
+  0x10: { normal: "m", shift: "M" },
+  0x11: { normal: "n", shift: "N" },
+  0x12: { normal: "o", shift: "O" },
+  0x13: { normal: "p", shift: "P" },
+  0x14: { normal: "q", shift: "Q" },
+  0x15: { normal: "r", shift: "R" },
+  0x16: { normal: "s", shift: "S" },
+  0x17: { normal: "t", shift: "T" },
+  0x18: { normal: "u", shift: "U" },
+  0x19: { normal: "v", shift: "V" },
+  0x1a: { normal: "w", shift: "W" },
+  0x1b: { normal: "x", shift: "X" },
+  0x1c: { normal: "y", shift: "Y" },
+  0x1d: { normal: "z", shift: "Z" },
+  0x1e: { normal: "1", shift: "!" },
+  0x1f: { normal: "2", shift: "@" },
+  0x20: { normal: "3", shift: "#" },
+  0x21: { normal: "4", shift: "$" },
+  0x22: { normal: "5", shift: "%" },
+  0x23: { normal: "6", shift: "^" },
+  0x24: { normal: "7", shift: "&" },
+  0x25: { normal: "8", shift: "*" },
+  0x26: { normal: "9", shift: "(" },
+  0x27: { normal: "0", shift: ")" },
+  0x28: "\n",
+  0x2b: "\t",
+  0x2c: " ",
+  0x2d: { normal: "-", shift: "_" },
+  0x2e: { normal: "=", shift: "+" },
+  0x2f: { normal: "[", shift: "{" },
+  0x30: { normal: "]", shift: "}" },
+  0x31: { normal: "\\", shift: "|" },
+  0x33: { normal: ";", shift: ":" },
+  0x34: { normal: "'", shift: "\"" },
+  0x35: { normal: "`", shift: "~" },
+  0x36: { normal: ",", shift: "<" },
+  0x37: { normal: ".", shift: ">" },
+  0x38: { normal: "/", shift: "?" }
+};
+
+function parseKeyboardReport(bytes) {
+  if (bytes.length !== 8) return null;
+
+  return {
+    modifierMask: bytes[0] ?? 0,
+    keycodes: bytes.slice(2, 8).filter((value) => value !== 0)
   };
+}
+
+function decodeKeyboard(bytes) {
+  const parsed = parseKeyboardReport(bytes);
+  if (!parsed) return "Not a boot-keyboard report";
 
   const pressed = [];
   for (let bit = 0; bit < 8; bit += 1) {
-    if (bytes[0] & (1 << bit)) pressed.push(modifierMap[bit]);
+    if (parsed.modifierMask & (1 << bit)) pressed.push(KEYBOARD_MODIFIER_MAP[bit]);
   }
-  for (const code of bytes.slice(2, 8)) {
-    if (code === 0) continue;
-    pressed.push(keyMap[code] ?? `0x${code.toString(16).padStart(2, "0")}`);
+  for (const code of parsed.keycodes) {
+    pressed.push(KEYBOARD_KEY_LABELS[code] ?? `0x${code.toString(16).padStart(2, "0")}`);
   }
   return pressed.length ? `Keyboard: ${pressed.join(", ")}` : "-";
 }
@@ -144,6 +219,12 @@ function packetBytes(packet) {
   return Array.isArray(packet.data) ? packet.data : parseHexBytes(packet.hex);
 }
 
+function isKeyboardPacketCandidate(packet, bytes, decoderMode) {
+  if (packet.direction !== "IN" || packet.endpoint === 0) return false;
+  if (decoderMode === "hid-mouse" || decoderMode === "hid-mouse-16" || decoderMode === "none") return false;
+  return bytes.length === 8;
+}
+
 function isMousePacketCandidate(packet, bytes, decoderMode) {
   if (!bytes.length) return false;
   if (packet.direction !== "IN" || packet.endpoint === 0) return false;
@@ -157,6 +238,58 @@ function isMousePacketCandidate(packet, bytes, decoderMode) {
   }
 
   return bytes.length >= 1 && bytes.length <= 8 && bytes.length !== 8;
+}
+
+function buildKeyboardTextView(packets, decoderMode) {
+  const output = [];
+  let keyboardPackets = 0;
+  let keyEvents = 0;
+  let currentPressed = new Set();
+
+  for (const packet of packets) {
+    const bytes = packetBytes(packet);
+    if (!isKeyboardPacketCandidate(packet, bytes, decoderMode)) continue;
+
+    const parsed = parseKeyboardReport(bytes);
+    if (!parsed) continue;
+
+    keyboardPackets += 1;
+    const nextPressed = new Set(parsed.keycodes);
+    const shift = (parsed.modifierMask & 0x22) !== 0;
+
+    for (const code of parsed.keycodes) {
+      if (currentPressed.has(code)) continue;
+
+      keyEvents += 1;
+
+      if (code === 0x2a) {
+        if (output.length) output.pop();
+        continue;
+      }
+
+      const mapped = KEYBOARD_TEXT_MAP[code];
+      if (typeof mapped === "string") {
+        output.push(mapped);
+        continue;
+      }
+
+      if (mapped) {
+        output.push(shift ? mapped.shift : mapped.normal);
+      }
+    }
+
+    currentPressed = nextPressed;
+  }
+
+  if (keyboardPackets === 0) {
+    return null;
+  }
+
+  return {
+    text: output.join(""),
+    keyboardPackets,
+    keyEvents
+  };
 }
 
 function buildMouseTrace(packets, decoderMode) {
@@ -384,6 +517,7 @@ export default function CaptureTab({
   const cardSx = { overflow: "hidden" };
   const [decoderMode, setDecoderMode] = useState("auto");
   const [mouseTraceOpen, setMouseTraceOpen] = useState(false);
+  const [keyboardTextOpen, setKeyboardTextOpen] = useState(false);
 
   const renderedPackets = useMemo(
     () =>
@@ -399,12 +533,19 @@ export default function CaptureTab({
 
   const mouseTrace = useMemo(() => buildMouseTrace(packets, decoderMode), [decoderMode, packets]);
   const mouseTraceGeometry = useMemo(() => buildTraceGeometry(mouseTrace), [mouseTrace]);
+  const keyboardTextView = useMemo(() => buildKeyboardTextView(packets, decoderMode), [decoderMode, packets]);
 
   useEffect(() => {
     if (captureRunning || !mouseTrace) {
       setMouseTraceOpen(false);
     }
   }, [captureRunning, mouseTrace]);
+
+  useEffect(() => {
+    if (captureRunning || !keyboardTextView) {
+      setKeyboardTextOpen(false);
+    }
+  }, [captureRunning, keyboardTextView]);
 
   return (
     <Stack spacing={2}>
@@ -478,6 +619,16 @@ export default function CaptureTab({
                     <span>
                       <IconButton size="small" onClick={() => setMouseTraceOpen(true)}>
                         <ShowChartIcon fontSize="small" />
+                      </IconButton>
+                    </span>
+                  </Tooltip>
+                ) : null}
+
+                {keyboardTextView && !captureRunning ? (
+                  <Tooltip title="Open keyboard text">
+                    <span>
+                      <IconButton size="small" onClick={() => setKeyboardTextOpen(true)}>
+                        <KeyboardIcon fontSize="small" />
                       </IconButton>
                     </span>
                   </Tooltip>
@@ -611,6 +762,47 @@ export default function CaptureTab({
           ) : (
             <Typography variant="body2" sx={{ color: "text.secondary" }}>
               No hay datos de raton para mostrar.
+            </Typography>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={keyboardTextOpen} onClose={() => setKeyboardTextOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle>Keyboard Text</DialogTitle>
+        <DialogContent dividers>
+          {keyboardTextView ? (
+            <Stack spacing={1.5}>
+              <Stack direction="row" spacing={1.5} useFlexGap flexWrap="wrap">
+                <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                  Packets {keyboardTextView.keyboardPackets}
+                </Typography>
+                <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                  Key events {keyboardTextView.keyEvents}
+                </Typography>
+              </Stack>
+
+              <Box
+                component="pre"
+                sx={{
+                  m: 0,
+                  p: 1.5,
+                  minHeight: 220,
+                  borderRadius: 2,
+                  border: "1px solid",
+                  borderColor: "divider",
+                  bgcolor: "background.paper",
+                  fontFamily: '"JetBrains Mono","Fira Code",monospace',
+                  fontSize: 13,
+                  whiteSpace: "pre-wrap",
+                  overflowWrap: "anywhere"
+                }}
+              >
+                {keyboardTextView.text || "No printable text could be reconstructed from the captured keyboard reports."}
+              </Box>
+            </Stack>
+          ) : (
+            <Typography variant="body2" sx={{ color: "text.secondary" }}>
+              No keyboard text available.
             </Typography>
           )}
         </DialogContent>
