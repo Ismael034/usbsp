@@ -38,9 +38,11 @@ static USB_SETUP_REQ relay_make_setup_req(void)
     return setup;
 }
 
-static bool relay_try_local_string_descriptor(const USB_SETUP_REQ *setup)
+static bool relay_try_local_descriptor(const USB_SETUP_REQ *setup)
 {
-    uint8_t str_index;
+    uint8_t desc_type;
+    uint8_t desc_index;
+    const uint8_t *src = NULL;
     uint16_t src_len;
 
     if (setup == NULL)
@@ -58,19 +60,39 @@ static bool relay_try_local_string_descriptor(const USB_SETUP_REQ *setup)
         return false;
     }
 
-    if (((uint8_t)(setup->wValue >> 8)) != USB_STRING_DESCRIPTOR)
+    desc_type = (uint8_t)(setup->wValue >> 8);
+    desc_index = (uint8_t)(setup->wValue & 0xFFu);
+
+    switch (desc_type)
     {
-        return false;
+        case USB_DEVICE_DESCRIPTOR:
+            src = USBD_DeviceDescriptor;
+            src_len = USBD_SIZE_DEVICE_DESC;
+            break;
+
+        case USB_CONFIG_DESCRIPTOR:
+            if (USBD_ConfigDescriptor == NULL || USBD_ConfigDescSize == 0u)
+            {
+                return false;
+            }
+            src = USBD_ConfigDescriptor;
+            src_len = USBD_ConfigDescSize;
+            break;
+
+        case USB_STRING_DESCRIPTOR:
+            if (desc_index >= 4u)
+            {
+                return false;
+            }
+            src = USBD_StringDescriptor[desc_index].USBD_StringDescriptor;
+            src_len = USBD_StringDescriptor[desc_index].USBD_StringDescriptorSize;
+            break;
+
+        default:
+            return false;
     }
 
-    str_index = (uint8_t)(setup->wValue & 0xFFu);
-    if (str_index >= 4u)
-    {
-        return false;
-    }
-
-    src_len = USBD_StringDescriptor[str_index].USBD_StringDescriptorSize;
-    if (src_len == 0u)
+    if (src == NULL || src_len == 0u)
     {
         return false;
     }
@@ -84,7 +106,7 @@ static bool relay_try_local_string_descriptor(const USB_SETUP_REQ *setup)
         src_len = DEF_COM_BUF_LEN;
     }
 
-    memcpy(Setup_Buf, USBD_StringDescriptor[str_index].USBD_StringDescriptor, src_len);
+    memcpy(Setup_Buf, src, src_len);
     Setup_Buf_Len = src_len;
     return true;
 }
@@ -231,7 +253,7 @@ uint8_t *usb_relay_data_generic(uint16_t length)
     {
         if (length == 0u)
         {
-            if (relay_try_local_string_descriptor(&setup))
+            if (relay_try_local_descriptor(&setup))
             {
                 return relay_return_setup_buffer_descriptor(length);
             }
