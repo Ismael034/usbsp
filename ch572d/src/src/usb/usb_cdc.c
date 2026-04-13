@@ -67,10 +67,10 @@ static const uint8_t tab_usb_cdc_cfg_des[] = {
 static const uint8_t tab_usb_lid_str_des[] = { 0x04, 0x03, 0x09, 0x04 };
 
 static const uint8_t usb_dev_para_cdc_serial_str[] =     "usbsp-0001";
-static const uint8_t usb_dev_para_cdc_product_str[] =    "usbsp cdc+WebUSB";
+static const uint8_t usb_dev_para_cdc_product_str[] =    "usbsp";
 static const uint8_t usb_dev_para_cdc_manufacture_str[] = "usbsp";
 static const uint8_t usb_dev_para_cdc_logs_str[] =       "usbsp logs (cdc)";
-static const uint8_t usb_dev_para_webusb_str[] =         "usbsp WebUSB";
+static const uint8_t usb_dev_para_webusb_str[] =         "usbsp";
 
 static uint8_t tab_cdc_line_coding[] = {
     0x85, 0x20, 0x00, 0x00,

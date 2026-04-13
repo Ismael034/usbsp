@@ -8,6 +8,9 @@
 #define EEPROM_I2C_ADDR     0xA1
 #define I2C_MAX_TIMEOUT     0x8000
 #define I2C_ACKPOLL_TIMEOUT 0x0100
+#define EEPROM_CTRL_PIN     GPIO_Pin_10
+#define EEPROM_SCL_PIN      GPIO_Pin_3
+#define EEPROM_SDA_PIN      GPIO_Pin_2
 
 uint16_t vid = 0;
 uint16_t pid = 0;
@@ -58,6 +61,19 @@ void i2c_init(uint32_t clock_speed, uint16_t own_address)
              I2C_AckAddr_7bit,
              own_address);
     I2C_Cmd(ENABLE);
+}
+
+void AT24C02_bus_release(void)
+{
+    I2C_Cmd(DISABLE);
+    GPIOA_ModeCfg(EEPROM_SCL_PIN | EEPROM_SDA_PIN, GPIO_ModeIN_Floating);
+    GPIOA_ModeCfg(EEPROM_CTRL_PIN, GPIO_ModeIN_Floating);
+}
+
+void AT24C02_bus_claim(void)
+{
+    GPIOA_SetBits(EEPROM_CTRL_PIN);
+    GPIOA_ModeCfg(EEPROM_CTRL_PIN, GPIO_ModeOut_PP_5mA);
 }
 
 void AT24C02_init(void)

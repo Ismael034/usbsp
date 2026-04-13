@@ -13,6 +13,8 @@
 
 void i2c_init(uint32_t clock_speed, uint16_t own_address);
 void AT24C02_init(void);
+void AT24C02_bus_release(void);
+void AT24C02_bus_claim(void);
 uint8_t AT24C02_read_one_byte(uint16_t read_address);
 void AT24C02_write_one_byte(uint16_t write_address, uint8_t data_to_write);
 void AT24C02_read(uint16_t read_address, uint8_t *buffer, uint16_t num_to_read);
