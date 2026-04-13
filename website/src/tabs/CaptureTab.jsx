@@ -170,7 +170,7 @@ function buildMouseTrace(packets, decoderMode) {
   let panTotal = 0;
   const points = [{ x: 0, y: 0 }];
 
-  for (const packet of packets.slice(-400)) {
+  for (const packet of packets) {
     const bytes = packetBytes(packet);
     if (!isMousePacketCandidate(packet, bytes, decoderMode)) continue;
 
