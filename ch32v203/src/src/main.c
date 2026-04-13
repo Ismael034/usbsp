@@ -198,9 +198,25 @@ static uint8_t handle_device_connection(void)
     LOG_INFO("usb: Max packet size: %d", RootHubDev.bEp0MaxPks);
 
     usbh_get_string_descriptors(RootHubDev.bEp0MaxPks);
+    eeprom_apply_usb_overrides();
     stop_relay_communication();
-    usb_relay_driver_init();
-    LOG_INFO("usb: Relay side initialized");
+
+    if (eeprom_usb_info.has_attach_delay_ms && eeprom_usb_info.attach_delay_ms != 0u)
+    {
+        LOG_INFO("usb: delaying upstream attach by %u ms", eeprom_usb_info.attach_delay_ms);
+        Delay_Ms(eeprom_usb_info.attach_delay_ms);
+    }
+
+    if ((eeprom_usb_info.has_flags == 0u) || ((eeprom_usb_info.flags & EEPROM_FLAG_BOOT_CONNECTED) != 0u))
+    {
+        usb_relay_driver_init();
+        LOG_INFO("usb: Relay side initialized");
+    }
+    else
+    {
+        LOG_INFO("usb: Relay kept disconnected by EEPROM bootConnected=0");
+    }
+
     LOG_DEBUG("number of interfaces: %d", HostCtl[index].InterfaceNum);
     RootHubDev.bStatus = ROOT_DEV_SUCCESS;
     reenum_requested = 0u;

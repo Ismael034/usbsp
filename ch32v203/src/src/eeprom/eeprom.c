@@ -1,6 +1,7 @@
 #include "debug.h"
 #include "debug_log.h"
 #include "eeprom.h"
+#include "usb_desc.h"
 #include "external/microtlv/tlv.h"
 #include <stdlib.h>
 #include <string.h>
@@ -8,6 +9,7 @@
 uint16_t vid = 0;
 uint16_t pid = 0;
 uint16_t capture_max_bytes = 64u;
+eeprom_usb_info_t eeprom_usb_info;
 
 #define EEPROM_TOTAL_SIZE        256u
 #define TLV_TYPE_VID             0x01u
@@ -21,39 +23,70 @@ uint16_t capture_max_bytes = 64u;
 #define TLV_TYPE_PRODUCT         0x09u
 #define TLV_TYPE_SERIAL          0x0Au
 
-#define TLV_FLAG_SELF_POWERED    (1u << 0)
-#define TLV_FLAG_REMOTE_WAKEUP   (1u << 1)
-#define TLV_FLAG_BOOT_CONNECTED  (1u << 2)
-#define TLV_FLAG_CAPTURE_ON_BOOT (1u << 3)
+#define TLV_TEXT_MAX_LEN         EEPROM_USB_TEXT_MAX_LEN
 
-#define TLV_TEXT_MAX_LEN         60u
-
-typedef struct
+static uint8_t effective_flags_from_info(const eeprom_usb_info_t *info)
 {
-    uint8_t parsed;
-    uint8_t record_count;
-    uint8_t unknown_count;
-    uint8_t has_vid;
-    uint8_t has_pid;
-    uint8_t has_bcd_device;
-    uint8_t has_max_power_ma;
-    uint8_t has_flags;
-    uint8_t has_attach_delay_ms;
-    uint8_t has_capture_max_bytes;
-    uint8_t has_manufacturer;
-    uint8_t has_product;
-    uint8_t has_serial;
-    uint16_t vid;
-    uint16_t pid;
-    uint16_t bcd_device;
-    uint16_t max_power_ma;
-    uint8_t flags;
-    uint16_t attach_delay_ms;
-    uint16_t capture_max_bytes;
-    char manufacturer[TLV_TEXT_MAX_LEN + 1];
-    char product[TLV_TEXT_MAX_LEN + 1];
-    char serial[TLV_TEXT_MAX_LEN + 1];
-} eeprom_tlv_info_t;
+    return (info && info->has_flags) ? info->flags : (uint8_t)(EEPROM_FLAG_BOOT_CONNECTED | EEPROM_FLAG_CAPTURE_ON_BOOT);
+}
+
+static void set_default_langid_descriptor(void)
+{
+    USBD_StringDescriptor[0].USBD_StringDescriptor[0] = 0x04u;
+    USBD_StringDescriptor[0].USBD_StringDescriptor[1] = USB_STRING_DESCRIPTOR_TYPE;
+    USBD_StringDescriptor[0].USBD_StringDescriptor[2] = 0x09u;
+    USBD_StringDescriptor[0].USBD_StringDescriptor[3] = 0x04u;
+    USBD_StringDescriptor[0].USBD_StringDescriptorSize = 4u;
+}
+
+static void sync_runtime_string_descriptors(void)
+{
+    if (USBD_StringDescriptor[0].USBD_StringDescriptorSize < 4u ||
+        USBD_StringDescriptor[0].USBD_StringDescriptor[1] != USB_STRING_DESCRIPTOR_TYPE)
+    {
+        set_default_langid_descriptor();
+    }
+
+    memcpy(USBD_StringLangID, USBD_StringDescriptor[0].USBD_StringDescriptor, USBD_SIZE_STRING_LANGID);
+
+    USBD_StringVendor = USBD_StringDescriptor[1].USBD_StringDescriptor;
+    USBD_StringProduct = USBD_StringDescriptor[2].USBD_StringDescriptor;
+    USBD_StringSerial = USBD_StringDescriptor[3].USBD_StringDescriptor;
+
+    USBD_StringVendorSize = (uint8_t)USBD_StringDescriptor[1].USBD_StringDescriptorSize;
+    USBD_StringProductSize = (uint8_t)USBD_StringDescriptor[2].USBD_StringDescriptorSize;
+    USBD_StringSerialSize = (uint8_t)USBD_StringDescriptor[3].USBD_StringDescriptorSize;
+}
+
+static void assign_ascii_usb_string_descriptor(USBD_StringDescriptor_s *dst, const char *src)
+{
+    uint16_t chars = 0u;
+    uint16_t total_len;
+
+    if (!dst) {
+        return;
+    }
+
+    if (!src) {
+        src = "";
+    }
+
+    while (src[chars] != '\0' && chars < TLV_TEXT_MAX_LEN) {
+        chars++;
+    }
+
+    total_len = (uint16_t)(2u + (chars * 2u));
+    memset(dst->USBD_StringDescriptor, 0, total_len);
+    dst->USBD_StringDescriptor[0] = (uint8_t)total_len;
+    dst->USBD_StringDescriptor[1] = USB_STRING_DESCRIPTOR_TYPE;
+
+    for (uint16_t i = 0u; i < chars; i++) {
+        dst->USBD_StringDescriptor[2u + (i * 2u)] = (uint8_t)src[i];
+        dst->USBD_StringDescriptor[3u + (i * 2u)] = 0x00u;
+    }
+
+    dst->USBD_StringDescriptorSize = total_len;
+}
 
 static void tlv_copy_text(char *dst, uint16_t dst_len, const uint8_t *src, uint16_t src_len)
 {
@@ -80,7 +113,7 @@ static uint16_t tlv_u16_le(const uint8_t *value)
     return (uint16_t)(((uint16_t)value[0]) | ((uint16_t)value[1] << 8));
 }
 
-static uint8_t eeprom_parse_tlv(const uint8_t *raw, uint16_t raw_len, eeprom_tlv_info_t *info)
+static uint8_t eeprom_parse_tlv(const uint8_t *raw, uint16_t raw_len, eeprom_usb_info_t *info)
 {
     uint8_t *p = (uint8_t *)raw;
     uint32_t left = raw_len;
@@ -193,7 +226,7 @@ static uint8_t eeprom_parse_tlv(const uint8_t *raw, uint16_t raw_len, eeprom_tlv
     return 0;
 }
 
-static void log_parsed_eeprom_tlv(const eeprom_tlv_info_t *info)
+static void log_parsed_eeprom_tlv(const eeprom_usb_info_t *info)
 {
     if (!info) {
         return;
@@ -207,10 +240,10 @@ static void log_parsed_eeprom_tlv(const eeprom_tlv_info_t *info)
     if (info->has_flags) {
         LOG_INFO("eeprom: flags=0x%02X", info->flags);
         LOG_INFO("eeprom: selfPowered=%u remoteWakeup=%u bootConnected=%u captureOnBoot=%u",
-                 (info->flags & TLV_FLAG_SELF_POWERED) ? 1u : 0u,
-                 (info->flags & TLV_FLAG_REMOTE_WAKEUP) ? 1u : 0u,
-                 (info->flags & TLV_FLAG_BOOT_CONNECTED) ? 1u : 0u,
-                 (info->flags & TLV_FLAG_CAPTURE_ON_BOOT) ? 1u : 0u);
+                 (info->flags & EEPROM_FLAG_SELF_POWERED) ? 1u : 0u,
+                 (info->flags & EEPROM_FLAG_REMOTE_WAKEUP) ? 1u : 0u,
+                 (info->flags & EEPROM_FLAG_BOOT_CONNECTED) ? 1u : 0u,
+                 (info->flags & EEPROM_FLAG_CAPTURE_ON_BOOT) ? 1u : 0u);
     }
     if (info->has_attach_delay_ms) LOG_INFO("eeprom: attachDelayMs=%u", info->attach_delay_ms);
     if (info->has_capture_max_bytes) LOG_INFO("eeprom: captureMaxBytes=%u", info->capture_max_bytes);
@@ -452,7 +485,7 @@ void AT24C02_write(uint16_t write_address, uint8_t *buffer, uint16_t num_to_writ
 void AT24C02_read_usb_info()
 {
     uint8_t raw[EEPROM_TOTAL_SIZE];
-    eeprom_tlv_info_t info;
+    eeprom_usb_info_t info;
 
     AT24C02_read(0x00, raw, EEPROM_TOTAL_SIZE);
 
@@ -461,6 +494,7 @@ void AT24C02_read_usb_info()
     // - website/src/lib/usbsp/tlv.js
     if (eeprom_parse_tlv(raw, EEPROM_TOTAL_SIZE, &info) == 0) {
         log_parsed_eeprom_tlv(&info);
+        eeprom_usb_info = info;
         vid = info.has_vid ? info.vid : 0;
         pid = info.has_pid ? info.pid : 0;
         capture_max_bytes = info.has_capture_max_bytes ? info.capture_max_bytes : 64u;
@@ -470,12 +504,80 @@ void AT24C02_read_usb_info()
     }
 
     LOG_WARN("eeprom: TLV parse failed, using legacy fixed VID/PID layout");
+    memset(&eeprom_usb_info, 0, sizeof(eeprom_usb_info));
     vid = ((uint16_t)raw[EEPROM_ADDR_DIV] << 8) | raw[EEPROM_ADDR_DIV + 1];
     pid = ((uint16_t)raw[EEPROM_ADDR_PID] << 8) | raw[EEPROM_ADDR_PID + 1];
     capture_max_bytes = 64u;
+    eeprom_usb_info.vid = vid;
+    eeprom_usb_info.pid = pid;
+    eeprom_usb_info.capture_max_bytes = capture_max_bytes;
+    eeprom_usb_info.has_vid = 1u;
+    eeprom_usb_info.has_pid = 1u;
+    eeprom_usb_info.has_capture_max_bytes = 1u;
     LOG_INFO("eeprom legacy: VID=0x%04X (%u)", vid, vid);
     LOG_INFO("eeprom legacy: PID=0x%04X (%u)", pid, pid);
     LOG_INFO("eeprom legacy: captureMaxBytes=%u", capture_max_bytes);
+}
+
+void eeprom_apply_usb_overrides(void)
+{
+    uint8_t effective_flags = effective_flags_from_info(&eeprom_usb_info);
+
+    if (eeprom_usb_info.has_vid && USBD_SIZE_DEVICE_DESC >= 10u) {
+        USBD_DeviceDescriptor[8] = (uint8_t)(eeprom_usb_info.vid & 0xFFu);
+        USBD_DeviceDescriptor[9] = (uint8_t)((eeprom_usb_info.vid >> 8) & 0xFFu);
+    }
+
+    if (eeprom_usb_info.has_pid && USBD_SIZE_DEVICE_DESC >= 12u) {
+        USBD_DeviceDescriptor[10] = (uint8_t)(eeprom_usb_info.pid & 0xFFu);
+        USBD_DeviceDescriptor[11] = (uint8_t)((eeprom_usb_info.pid >> 8) & 0xFFu);
+    }
+
+    if (eeprom_usb_info.has_bcd_device && USBD_SIZE_DEVICE_DESC >= 14u) {
+        USBD_DeviceDescriptor[12] = (uint8_t)(eeprom_usb_info.bcd_device & 0xFFu);
+        USBD_DeviceDescriptor[13] = (uint8_t)((eeprom_usb_info.bcd_device >> 8) & 0xFFu);
+    }
+
+    if (USBD_ConfigDescriptor != NULL && USBD_ConfigDescSize >= 9u) {
+        if (eeprom_usb_info.has_flags) {
+            USBD_ConfigDescriptor[7] = (uint8_t)(0x80u |
+                ((effective_flags & EEPROM_FLAG_SELF_POWERED) ? 0x40u : 0x00u) |
+                ((effective_flags & EEPROM_FLAG_REMOTE_WAKEUP) ? 0x20u : 0x00u));
+        }
+
+        if (eeprom_usb_info.has_max_power_ma) {
+            uint16_t units_2ma = (uint16_t)((eeprom_usb_info.max_power_ma + 1u) / 2u);
+            if (units_2ma > 255u) {
+                units_2ma = 255u;
+            }
+            USBD_ConfigDescriptor[8] = (uint8_t)units_2ma;
+        }
+    }
+
+    if (eeprom_usb_info.has_manufacturer) {
+        assign_ascii_usb_string_descriptor(&USBD_StringDescriptor[1], eeprom_usb_info.manufacturer);
+        if (USBD_SIZE_DEVICE_DESC >= 15u) {
+            USBD_DeviceDescriptor[14] = (eeprom_usb_info.manufacturer[0] != '\0') ? 1u : 0u;
+        }
+    }
+
+    if (eeprom_usb_info.has_product) {
+        assign_ascii_usb_string_descriptor(&USBD_StringDescriptor[2], eeprom_usb_info.product);
+        if (USBD_SIZE_DEVICE_DESC >= 16u) {
+            USBD_DeviceDescriptor[15] = (eeprom_usb_info.product[0] != '\0') ? 2u : 0u;
+        }
+    }
+
+    if (eeprom_usb_info.has_serial) {
+        assign_ascii_usb_string_descriptor(&USBD_StringDescriptor[3], eeprom_usb_info.serial);
+        if (USBD_SIZE_DEVICE_DESC >= 17u) {
+            USBD_DeviceDescriptor[16] = (eeprom_usb_info.serial[0] != '\0') ? 3u : 0u;
+        }
+    }
+
+    sync_runtime_string_descriptors();
+
+    LOG_INFO("usb: applied EEPROM overrides to active descriptors");
 }
 
 /*********************************************************************
