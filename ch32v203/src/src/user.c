@@ -94,9 +94,9 @@ uint8_t user_build_current_tlv_image(uint8_t *image, uint16_t image_size, uint16
     uint16_t local_pid = 0;
     uint16_t local_bcd_device = 0;
     uint16_t local_max_power_ma = 100u;
-    uint16_t attach_delay_ms = 0u;
-    uint16_t capture_max_bytes = 64u;
-    uint8_t flags = (uint8_t)(TLV_FLAG_BOOT_CONNECTED | TLV_FLAG_CAPTURE_ON_BOOT);
+    uint16_t attach_delay_ms = eeprom_usb_info.has_attach_delay_ms ? eeprom_usb_info.attach_delay_ms : 0u;
+    uint16_t local_capture_max_bytes = capture_max_bytes;
+    uint8_t flags = eeprom_usb_info.has_flags ? eeprom_usb_info.flags : (uint8_t)(TLV_FLAG_BOOT_CONNECTED | TLV_FLAG_CAPTURE_ON_BOOT);
     char manufacturer[TLV_TEXT_MAX_LEN + 1];
     char product[TLV_TEXT_MAX_LEN + 1];
     char serial[TLV_TEXT_MAX_LEN + 1];
@@ -120,6 +120,7 @@ uint8_t user_build_current_tlv_image(uint8_t *image, uint16_t image_size, uint16
     cfg = (const USB_ConfigDescriptor *)USBD_ConfigDescriptor;
     if (cfg && USBD_ConfigDescSize >= 9u) {
         local_max_power_ma = (uint16_t)cfg->bMaxPower * 2u;
+        flags &= (uint8_t)~(TLV_FLAG_SELF_POWERED | TLV_FLAG_REMOTE_WAKEUP);
         if ((cfg->bmAttributes & 0x40u) != 0u) flags |= TLV_FLAG_SELF_POWERED;
         if ((cfg->bmAttributes & 0x20u) != 0u) flags |= TLV_FLAG_REMOTE_WAKEUP;
     }
@@ -134,7 +135,7 @@ uint8_t user_build_current_tlv_image(uint8_t *image, uint16_t image_size, uint16
     if (tlv_append_u16(&p, &left, TLV_TYPE_MAX_POWER_MA, local_max_power_ma)) return 1u;
     if (tlv_append_u8(&p, &left, TLV_TYPE_FLAGS, flags)) return 1u;
     if (tlv_append_u16(&p, &left, TLV_TYPE_ATTACH_DELAY_MS, attach_delay_ms)) return 1u;
-    if (tlv_append_u16(&p, &left, TLV_TYPE_CAPTURE_MAX_B, capture_max_bytes)) return 1u;
+    if (tlv_append_u16(&p, &left, TLV_TYPE_CAPTURE_MAX_B, local_capture_max_bytes)) return 1u;
     if (tlv_append_str(&p, &left, TLV_TYPE_MANUFACTURER, manufacturer)) return 1u;
     if (tlv_append_str(&p, &left, TLV_TYPE_PRODUCT, product)) return 1u;
     if (tlv_append_str(&p, &left, TLV_TYPE_SERIAL, serial)) return 1u;
@@ -239,6 +240,7 @@ void user_btn_handler(void)
         
         if(s == ERR_SUCCESS)
         {
+            (void)usbh_get_string_descriptors(RootHubDev.bEp0MaxPks);
             if (write_all_tlv_to_eeprom() == 0u) {
                 LOG_INFO("eeprom: write OK");
                 AT24C02_read_usb_info();
