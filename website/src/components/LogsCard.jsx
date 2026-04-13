@@ -14,10 +14,10 @@ export default function LogsCard({ logText, onClear }) {
     <Card variant="outlined" sx={{ height: "100%" }}>
       <CardHeader
         title="Logs"
-        subheader="WebUSB responses"
+        subheader="Device responses"
         action={
           <Button variant="text" size="small" onClick={onClear} disabled={!logText.length}>
-            Clear
+            Clear logs
           </Button>
         }
       />
