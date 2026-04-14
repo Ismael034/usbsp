@@ -34,6 +34,23 @@ const CMD_CH32_RESET = 0x05;
 const CMD_GET_VERSIONS = 0x10;
 const CMD_GET_ACTIVE_USB_INFO = 0x11;
 const CMD_CAPTURE_POLL = 0x20;
+const USB_CONNECT_STEP_TIMEOUT_MS = 10000;
+
+async function withPromiseTimeout(promise, timeoutMs, label) {
+  const ms = Number.isFinite(timeoutMs) ? timeoutMs : 0;
+  if (ms <= 0) return await promise;
+
+  let timeoutId = null;
+  const timeout = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(`${label}: timeout after ${ms}ms`)), ms);
+  });
+
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
 
 function getWebUsbSupport() {
   if (typeof navigator === "undefined") {
@@ -556,6 +573,7 @@ export function useUsbspApp({ log, notify, reportError }) {
       await withBusy(async () => {
         let device;
         try {
+          log("CONNECT: waiting for device selection");
           device = await navigator.usb.requestDevice({
             filters: [{ vendorId: VID, productId: PID }]
           });
@@ -570,15 +588,43 @@ export function useUsbspApp({ log, notify, reportError }) {
           throw err;
         }
 
-        await device.open();
-        if (device.configuration === null) {
-          await device.selectConfiguration(1);
+        const productName = device.productName || "usbsp";
+        log(`CONNECT: selected ${productName} (${hex4(device.vendorId)}:${hex4(device.productId)})`);
+
+        try {
+          log("CONNECT: opening device");
+          await withPromiseTimeout(device.open(), USB_CONNECT_STEP_TIMEOUT_MS, "USB open");
+
+          if (device.configuration === null) {
+            log("CONNECT: selecting configuration 1");
+            await withPromiseTimeout(device.selectConfiguration(1), USB_CONNECT_STEP_TIMEOUT_MS, "USB selectConfiguration");
+          }
+
+          const currentConfig =
+            device.configuration ??
+            device.configurations?.find((entry) => entry.configurationValue === 1) ??
+            null;
+          const interfaceNumbers = (currentConfig?.interfaces ?? []).map((entry) => entry.interfaceNumber);
+          log(`CONNECT: interfaces [${interfaceNumbers.join(", ") || "none"}]`);
+          if (!interfaceNumbers.includes(IFACE)) {
+            throw new Error(`USB interface ${IFACE} not found on selected configuration`);
+          }
+
+          log(`CONNECT: claiming interface ${IFACE}`);
+          await withPromiseTimeout(device.claimInterface(IFACE), USB_CONNECT_STEP_TIMEOUT_MS, "USB claimInterface");
+        } catch (err) {
+          try {
+            if (device.opened) {
+              await withPromiseTimeout(device.close(), 3000, "USB close");
+            }
+          } catch {
+            // ignore cleanup failures after a connect error
+          }
+          throw err;
         }
-        await device.claimInterface(IFACE);
 
         deviceRef.current = device;
         setConnected(true);
-        const productName = device.productName || "usbsp";
         log(`Connected: ${productName}`);
         notify("success", `Connected to ${productName}.`);
 
