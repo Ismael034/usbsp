@@ -27,6 +27,25 @@ static volatile uint8_t reset_requested = 0;
 
 #define TLV_TEXT_MAX_LEN         60u
 
+typedef struct
+{
+    uint8_t has_device;
+    uint8_t has_config;
+    uint8_t has_manufacturer;
+    uint8_t has_product;
+    uint8_t has_serial;
+    uint16_t vid;
+    uint16_t pid;
+    uint16_t bcd_device;
+    uint16_t max_power_ma;
+    uint8_t bm_attributes;
+    char manufacturer[TLV_TEXT_MAX_LEN + 1];
+    char product[TLV_TEXT_MAX_LEN + 1];
+    char serial[TLV_TEXT_MAX_LEN + 1];
+} connected_usb_snapshot_t;
+
+static connected_usb_snapshot_t connected_usb_snapshot;
+
 static uint8_t utf16le_desc_to_ascii(const USBD_StringDescriptor_s *src, char *dst, uint16_t dst_len)
 {
     uint16_t i;
@@ -59,6 +78,39 @@ static uint8_t utf16le_desc_to_ascii(const USBD_StringDescriptor_s *src, char *d
     }
     dst[out] = '\0';
     return 0u;
+}
+
+static void utf16le_bytes_to_ascii(const uint8_t *src, uint16_t src_len, char *dst, uint16_t dst_len)
+{
+    uint16_t i;
+    uint16_t b_len;
+    uint16_t out = 0u;
+
+    if (!dst || dst_len == 0u) {
+        return;
+    }
+
+    dst[0] = '\0';
+    if (!src || src_len < 2u) {
+        return;
+    }
+
+    b_len = src[0];
+    if (b_len > src_len) {
+        b_len = src_len;
+    }
+    if (b_len < 2u || src[1] != 0x03u) {
+        return;
+    }
+
+    for (i = 2u; (i + 1u) < b_len && (out + 1u) < dst_len; i += 2u) {
+        uint8_t ch = src[i];
+        if (ch == '\0') {
+            break;
+        }
+        dst[out++] = (char)ch;
+    }
+    dst[out] = '\0';
 }
 
 static uint8_t tlv_append_u16(uint8_t **p, uint32_t *left, uint8_t type, uint16_t value)
@@ -111,23 +163,48 @@ uint8_t user_build_current_tlv_image(uint8_t *image, uint16_t image_size, uint16
     memset(product, 0, sizeof(product));
     memset(serial, 0, sizeof(serial));
 
-    if (USBD_SIZE_DEVICE_DESC >= 12u) {
+    if (connected_usb_snapshot.has_device != 0u) {
+        local_vid = connected_usb_snapshot.vid;
+        local_pid = connected_usb_snapshot.pid;
+        local_bcd_device = connected_usb_snapshot.bcd_device;
+    } else if (USBD_SIZE_DEVICE_DESC >= 12u) {
         local_vid = (uint16_t)(((uint16_t)USBD_DeviceDescriptor[9] << 8) | USBD_DeviceDescriptor[8]);
         local_pid = (uint16_t)(((uint16_t)USBD_DeviceDescriptor[11] << 8) | USBD_DeviceDescriptor[10]);
         local_bcd_device = (uint16_t)(((uint16_t)USBD_DeviceDescriptor[13] << 8) | USBD_DeviceDescriptor[12]);
     }
 
-    cfg = (const USB_ConfigDescriptor *)USBD_ConfigDescriptor;
-    if (cfg && USBD_ConfigDescSize >= 9u) {
-        local_max_power_ma = (uint16_t)cfg->bMaxPower * 2u;
+    if (connected_usb_snapshot.has_config != 0u) {
+        local_max_power_ma = connected_usb_snapshot.max_power_ma;
         flags &= (uint8_t)~(TLV_FLAG_SELF_POWERED | TLV_FLAG_REMOTE_WAKEUP);
-        if ((cfg->bmAttributes & 0x40u) != 0u) flags |= TLV_FLAG_SELF_POWERED;
-        if ((cfg->bmAttributes & 0x20u) != 0u) flags |= TLV_FLAG_REMOTE_WAKEUP;
+        if ((connected_usb_snapshot.bm_attributes & 0x40u) != 0u) flags |= TLV_FLAG_SELF_POWERED;
+        if ((connected_usb_snapshot.bm_attributes & 0x20u) != 0u) flags |= TLV_FLAG_REMOTE_WAKEUP;
+    } else {
+        cfg = (const USB_ConfigDescriptor *)USBD_ConfigDescriptor;
+        if (cfg && USBD_ConfigDescSize >= 9u) {
+            local_max_power_ma = (uint16_t)cfg->bMaxPower * 2u;
+            flags &= (uint8_t)~(TLV_FLAG_SELF_POWERED | TLV_FLAG_REMOTE_WAKEUP);
+            if ((cfg->bmAttributes & 0x40u) != 0u) flags |= TLV_FLAG_SELF_POWERED;
+            if ((cfg->bmAttributes & 0x20u) != 0u) flags |= TLV_FLAG_REMOTE_WAKEUP;
+        }
     }
 
-    (void)utf16le_desc_to_ascii(&USBD_StringDescriptor[1], manufacturer, (uint16_t)sizeof(manufacturer));
-    (void)utf16le_desc_to_ascii(&USBD_StringDescriptor[2], product, (uint16_t)sizeof(product));
-    (void)utf16le_desc_to_ascii(&USBD_StringDescriptor[3], serial, (uint16_t)sizeof(serial));
+    if (connected_usb_snapshot.has_manufacturer != 0u) {
+        strncpy(manufacturer, connected_usb_snapshot.manufacturer, sizeof(manufacturer) - 1u);
+    } else {
+        (void)utf16le_desc_to_ascii(&USBD_StringDescriptor[1], manufacturer, (uint16_t)sizeof(manufacturer));
+    }
+
+    if (connected_usb_snapshot.has_product != 0u) {
+        strncpy(product, connected_usb_snapshot.product, sizeof(product) - 1u);
+    } else {
+        (void)utf16le_desc_to_ascii(&USBD_StringDescriptor[2], product, (uint16_t)sizeof(product));
+    }
+
+    if (connected_usb_snapshot.has_serial != 0u) {
+        strncpy(serial, connected_usb_snapshot.serial, sizeof(serial) - 1u);
+    } else {
+        (void)utf16le_desc_to_ascii(&USBD_StringDescriptor[3], serial, (uint16_t)sizeof(serial));
+    }
 
     if (tlv_append_u16(&p, &left, TLV_TYPE_VID, local_vid)) return 1u;
     if (tlv_append_u16(&p, &left, TLV_TYPE_PID, local_pid)) return 1u;
@@ -148,6 +225,59 @@ uint8_t user_build_current_tlv_image(uint8_t *image, uint16_t image_size, uint16
         *used_len = (uint16_t)(image_size - left);
     }
     return 0u;
+}
+
+void user_clear_connected_usb_snapshot(void)
+{
+    memset(&connected_usb_snapshot, 0, sizeof(connected_usb_snapshot));
+}
+
+void user_set_connected_usb_device_descriptor(const uint8_t *desc, uint16_t len)
+{
+    if (!desc || len < 14u) {
+        return;
+    }
+
+    connected_usb_snapshot.vid = (uint16_t)(((uint16_t)desc[9] << 8) | desc[8]);
+    connected_usb_snapshot.pid = (uint16_t)(((uint16_t)desc[11] << 8) | desc[10]);
+    connected_usb_snapshot.bcd_device = (uint16_t)(((uint16_t)desc[13] << 8) | desc[12]);
+    connected_usb_snapshot.has_device = 1u;
+}
+
+void user_set_connected_usb_config_descriptor(const uint8_t *cfg, uint16_t len)
+{
+    if (!cfg || len < 9u) {
+        return;
+    }
+
+    connected_usb_snapshot.max_power_ma = (uint16_t)cfg[8] * 2u;
+    connected_usb_snapshot.bm_attributes = cfg[7];
+    connected_usb_snapshot.has_config = 1u;
+}
+
+void user_set_connected_usb_string_descriptor(uint8_t index, const uint8_t *src, uint16_t len)
+{
+    if (!src || len < 2u) {
+        return;
+    }
+
+    switch (index)
+    {
+        case 1u:
+            utf16le_bytes_to_ascii(src, len, connected_usb_snapshot.manufacturer, (uint16_t)sizeof(connected_usb_snapshot.manufacturer));
+            connected_usb_snapshot.has_manufacturer = 1u;
+            break;
+        case 2u:
+            utf16le_bytes_to_ascii(src, len, connected_usb_snapshot.product, (uint16_t)sizeof(connected_usb_snapshot.product));
+            connected_usb_snapshot.has_product = 1u;
+            break;
+        case 3u:
+            utf16le_bytes_to_ascii(src, len, connected_usb_snapshot.serial, (uint16_t)sizeof(connected_usb_snapshot.serial));
+            connected_usb_snapshot.has_serial = 1u;
+            break;
+        default:
+            break;
+    }
 }
 
 static uint8_t write_all_tlv_to_eeprom(void)

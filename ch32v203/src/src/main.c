@@ -150,6 +150,7 @@ static uint8_t init_system(void)
     if ((status = init_usb_interrupts()) != ERR_SUCCESS) return status;
     if ((status = init_peripherals()) != ERR_SUCCESS) return status;
     spi_link_init();
+    user_clear_connected_usb_snapshot();
 
     memset(&RootHubDev, 0, sizeof(ROOT_HUB_DEVICE));
     memset(&HostCtl[DEF_USBFS_PORT_INDEX * DEF_ONE_USB_SUP_DEV_TOTAL], 0,
@@ -231,6 +232,7 @@ static void handle_device_disconnection(void)
     stop_relay_communication();
     memset(&HostCtl[device_index], 0, sizeof(HOST_CTL));
     memset(&RootHubDev, 0, sizeof(ROOT_HUB_DEVICE));
+    user_clear_connected_usb_snapshot();
     reenum_requested = 0u;
 
     LOG_INFO("usb: port dev out");

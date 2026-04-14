@@ -1,6 +1,7 @@
 #include "usbh.h"
 #include "usbd.h"
 #include "app.h"
+#include "user.h"
 #include "debug_log.h"
 #include <stdlib.h>
 
@@ -305,6 +306,7 @@ uint8_t usbh_enumerate_root_device(void)
         if (status == ERR_SUCCESS)
         {
             memcpy(USBD_DeviceDescriptor, DevDesc_Buf, USBD_SIZE_DEVICE_DESC);
+            user_set_connected_usb_device_descriptor(DevDesc_Buf, USBD_SIZE_DEVICE_DESC);
             LOG_DEBUG("usbh: Device descriptor captured");
         }
         else
@@ -334,6 +336,7 @@ uint8_t usbh_enumerate_root_device(void)
             USBD_ConfigDescriptor = (uint8_t *)malloc(descriptor_length);
             memcpy(USBD_ConfigDescriptor, Com_Buf, descriptor_length);
             USBD_ConfigDescSize = descriptor_length;
+            user_set_connected_usb_config_descriptor(Com_Buf, descriptor_length);
 
             LOG_DEBUG("usbh: Config descriptor captured (%u bytes)", descriptor_length);
 
@@ -497,6 +500,7 @@ uint8_t usbh_get_string_descriptors(uint8_t ep0_size)
         {
             assign_usb_string_descriptor(&string_descriptor, Com_Buf, descriptor_size);
             USBD_StringDescriptor[3] = string_descriptor;
+            user_set_connected_usb_string_descriptor(3u, Com_Buf, descriptor_size);
         }
         else
         {
@@ -524,6 +528,7 @@ uint8_t usbh_get_string_descriptors(uint8_t ep0_size)
         {
             assign_usb_string_descriptor(&string_descriptor, Com_Buf, Com_Buf[0]);
             USBD_StringDescriptor[1] = string_descriptor;
+            user_set_connected_usb_string_descriptor(1u, Com_Buf, Com_Buf[0]);
         }
         else
         {
@@ -539,6 +544,7 @@ uint8_t usbh_get_string_descriptors(uint8_t ep0_size)
         {
             assign_usb_string_descriptor(&string_descriptor, Com_Buf, Com_Buf[0]);
             USBD_StringDescriptor[2] = string_descriptor;
+            user_set_connected_usb_string_descriptor(2u, Com_Buf, Com_Buf[0]);
         }
         else
         {
@@ -554,6 +560,7 @@ uint8_t usbh_get_string_descriptors(uint8_t ep0_size)
         {
             assign_usb_string_descriptor(&string_descriptor, Com_Buf, Com_Buf[0]);
             USBD_StringDescriptor[3] = string_descriptor;
+            user_set_connected_usb_string_descriptor(3u, Com_Buf, Com_Buf[0]);
         }
         else
         {
