@@ -1,8 +1,21 @@
 import { useCallback, useState } from "react";
 
+function isWindowsBrowser() {
+  if (typeof navigator === "undefined") {
+    return false;
+  }
+
+  const platform = navigator.userAgentData?.platform ?? navigator.platform ?? "";
+  const userAgent = navigator.userAgent ?? "";
+  return /windows/i.test(platform) || /windows/i.test(userAgent);
+}
+
 function formatErrorMessage(err) {
   const message = err?.message ?? String(err);
   if (/claiminterface/i.test(message) || /unable to claim interface/i.test(message)) {
+    if (isWindowsBrowser()) {
+      return "Unable to claim the USB interface. On Windows, install WinUSB for the usbsp WebUSB interface with Zadig: https://zadig.akeo.ie/";
+    }
     return "Unable to claim the USB interface. Close other browser tabs or apps using this device and try again.";
   }
   return message;
