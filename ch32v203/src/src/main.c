@@ -44,7 +44,7 @@ static void stop_relay_communication(void)
 static void print_banner(void)
 {
     LOG_INFO("--------------------------------------------------------");
-    LOG_INFO("                      usbsp v0.1.0                      ");
+    LOG_INFO("                      USBsp v0.1.0                      ");
     LOG_INFO("--------------------------------------------------------");
 }
 
