@@ -5,6 +5,12 @@
 /* Variable Definition */
 __attribute__((aligned(4))) uint8_t  USBFS_RX_Buf[ USBFS_MAX_PACKET_SIZE ];     // IN, must even address
 __attribute__((aligned(4))) uint8_t  USBFS_TX_Buf[ USBFS_MAX_PACKET_SIZE ];     // OUT, must even address
+static uint16_t usb_string_langid = 0x0409;
+
+void USBFSH_SetStrLangID(uint16_t langid)
+{
+    usb_string_langid = (langid != 0u) ? langid : 0x0409u;
+}
 
 /*********************************************************************
  * @fn      USBFS_Host_Init
@@ -544,22 +550,51 @@ uint8_t USBFSH_GetStrDescr( uint8_t ep0_size, uint8_t str_num, uint8_t *pbuf, ui
     /* Get the string descriptor of the first 4 bytes */
     memcpy( pUSBFS_SetupRequest, SetupGetStrDesc, sizeof( USB_SETUP_REQ ) );
     pUSBFS_SetupRequest->wValue = ( (uint16_t)USB_DESCR_TYP_STRING << 8 ) | str_num;
+    pUSBFS_SetupRequest->wIndex = ( str_num == 0 ) ? 0 : usb_string_langid;
     s = USBFSH_CtrlTransfer( ep0_size, pbuf, &len );
     if( s != ERR_SUCCESS )
     {
+        if( pbuf_size )
+        {
+            *pbuf_size = (uint8_t)len;
+        }
         return s;
+    }
+    if( len < 2 || pbuf[ 1 ] != USB_DESCR_TYP_STRING )
+    {
+        if( pbuf_size )
+        {
+            *pbuf_size = (uint8_t)len;
+        }
+        return ERR_USB_TRANSFER;
     }
 
     /* Get the complete string descriptor */
     len = pbuf[ 0 ];
+    if( len < 2 || ( len & 1 ) != 0 )
+    {
+        if( pbuf_size )
+        {
+            *pbuf_size = (uint8_t)len;
+        }
+        return ERR_USB_TRANSFER;
+    }
     memcpy( pUSBFS_SetupRequest, SetupGetStrDesc, sizeof( USB_SETUP_REQ ) );
     pUSBFS_SetupRequest->wValue = ( (uint16_t)USB_DESCR_TYP_STRING << 8 ) | str_num;
+    pUSBFS_SetupRequest->wIndex = ( str_num == 0 ) ? 0 : usb_string_langid;
     pUSBFS_SetupRequest->wLength = len;
     s = USBFSH_CtrlTransfer( ep0_size, pbuf, &len );
+    if( pbuf_size )
+    {
+        *pbuf_size = ( len > 0xFF ) ? 0xFF : (uint8_t)len;
+    }
     if( s != ERR_SUCCESS )
     {
-        *pbuf_size = len;
         return s;
+    }
+    if( len < 2 || pbuf[ 1 ] != USB_DESCR_TYP_STRING || len < pbuf[ 0 ] )
+    {
+        return ERR_USB_TRANSFER;
     }
     return ERR_SUCCESS;
 }

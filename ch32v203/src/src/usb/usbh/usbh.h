@@ -91,6 +91,7 @@ extern uint8_t USBFSH_GetDeviceDescr( uint8_t *pep0_size, uint8_t *pbuf );
 extern uint8_t USBFSH_GetConfigDescr( uint8_t ep0_size, uint8_t *pbuf, uint16_t buf_len, uint16_t *pcfg_len );
 extern uint8_t USBFSH_GetBOSDescr(uint8_t ep0_size, uint8_t *pbuf, uint16_t buf_len, uint16_t *pbos_len);
 extern uint8_t USBFSH_GetStrDescr( uint8_t ep0_size, uint8_t str_num, uint8_t *pbuf, uint8_t *pbuf_size );
+extern void USBFSH_SetStrLangID( uint16_t langid );
 extern uint8_t USBFSH_SetUsbAddress( uint8_t ep0_size, uint8_t addr );
 extern uint8_t USBFSH_SetUsbConfig( uint8_t ep0_size, uint8_t cfg_val );
 extern uint8_t USBFSH_ClearEndpStall( uint8_t ep0_size, uint8_t endp_num );

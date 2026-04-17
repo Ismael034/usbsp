@@ -16,7 +16,6 @@ ep_config *ep_conf;
 uint8_t ep_conf_size;
 struct   _ROOT_HUB_DEVICE RootHubDev;
 struct   __HOST_CTL HostCtl[DEF_TOTAL_ROOT_HUB * DEF_ONE_USB_SUP_DEV_TOTAL];
-uint8_t descriptor_size;
 
 #define MAX_ENDPOINT_CONFIG_ENTRIES 16
 #define USB_DESCRIPTOR_TYPE_ENDPOINT 0x05
@@ -72,6 +71,37 @@ static void assign_usb_string_descriptor(USBD_StringDescriptor_s *dst, uint8_t *
     memset(dst->USBD_StringDescriptor, 0, size);
     memcpy(dst->USBD_StringDescriptor, src, size);
     dst->USBD_StringDescriptorSize = size;
+}
+
+static uint8_t capture_usb_string_descriptor(uint8_t ep0_size, uint8_t str_index, uint8_t dst_index)
+{
+    uint8_t status;
+    uint8_t size = 0u;
+    USBD_StringDescriptor_s string_descriptor;
+
+    status = USBFSH_GetStrDescr(ep0_size, str_index, Com_Buf, &size);
+    if (status != ERR_SUCCESS)
+    {
+        LOG_ERROR("usbh: stringdesc%u err(%02x)", str_index, status);
+        return status;
+    }
+
+    if (size < 2u || size > Com_Buf[0] || Com_Buf[1] != DEF_DECR_STRING)
+    {
+        LOG_ERROR("usbh: stringdesc%u invalid len=%u bLength=%u type=%02x",
+                  str_index, size, Com_Buf[0], Com_Buf[1]);
+        return ERR_USB_TRANSFER;
+    }
+
+    assign_usb_string_descriptor(&string_descriptor, Com_Buf, size);
+    USBD_StringDescriptor[dst_index] = string_descriptor;
+
+    if (dst_index >= 1u && dst_index <= 3u)
+    {
+        user_set_connected_usb_string_descriptor(dst_index, Com_Buf, size);
+    }
+
+    return ERR_SUCCESS;
 }
 
 
@@ -292,6 +322,8 @@ uint8_t usbh_enumerate_root_device(void)
         }
         else
         {
+            LOG_WARN("usbh: set address failed attempt=%u status=%02x speed=%u ep0=%u",
+                     retry_count, status, RootHubDev.bSpeed, RootHubDev.bEp0MaxPks);
             if (retry_count <= 5)
             {
                 continue;
@@ -311,6 +343,8 @@ uint8_t usbh_enumerate_root_device(void)
         }
         else
         {
+            LOG_WARN("usbh: device descriptor failed attempt=%u status=%02x speed=%u ep0=%u",
+                     retry_count, status, RootHubDev.bSpeed, RootHubDev.bEp0MaxPks);
             if (retry_count <= 5)
             {
                 continue;
@@ -490,82 +524,35 @@ uint8_t app_analyze_config_descriptor(uint8_t host_index, uint8_t ep0_size)
 uint8_t usbh_get_string_descriptors(uint8_t ep0_size)
 {
     uint8_t status;
-    USBD_StringDescriptor_s string_descriptor;
 
-    if (Com_Buf[6])
-    {
-        LOG_DEBUG("usbh: get StringDesc4: ");
-        status = USBFSH_GetStrDescr(ep0_size, Com_Buf[6], Com_Buf, &descriptor_size);
-        if (status == ERR_SUCCESS)
-        {
-            assign_usb_string_descriptor(&string_descriptor, Com_Buf, descriptor_size);
-            USBD_StringDescriptor[3] = string_descriptor;
-            user_set_connected_usb_string_descriptor(3u, Com_Buf, descriptor_size);
-        }
-        else
-        {
-            LOG_ERROR("usbh: stringdesc4 err(%02x)", status);
-        }
-    }
-
+    USBFSH_SetStrLangID(0x0409u);
     LOG_DEBUG("usbh: get StringDesc0 (lang descriptor), id=%u: ", 0);
-    status = USBFSH_GetStrDescr(ep0_size, 0, Com_Buf, &descriptor_size);
-    if (status == ERR_SUCCESS)
+    status = capture_usb_string_descriptor(ep0_size, 0u, 0u);
+    if (status == ERR_SUCCESS && Com_Buf[0] >= 4u)
     {
-        assign_usb_string_descriptor(&string_descriptor, Com_Buf, Com_Buf[0]);
-        USBD_StringDescriptor[0] = string_descriptor;
+        USBFSH_SetStrLangID((uint16_t)Com_Buf[2] | ((uint16_t)Com_Buf[3] << 8));
     }
-    else
-    {
-        LOG_ERROR("usbh: stringdesc0 err(%02x)", status);
-    }
+    (void)status;
 
     if (DevDesc_Buf[14])
     {
         LOG_DEBUG("usbh: get StringDesc1, id=%u: ", DevDesc_Buf[14]);
-        status = USBFSH_GetStrDescr(ep0_size, DevDesc_Buf[14], Com_Buf, &descriptor_size);
-        if (status == ERR_SUCCESS)
-        {
-            assign_usb_string_descriptor(&string_descriptor, Com_Buf, Com_Buf[0]);
-            USBD_StringDescriptor[1] = string_descriptor;
-            user_set_connected_usb_string_descriptor(1u, Com_Buf, Com_Buf[0]);
-        }
-        else
-        {
-            LOG_ERROR("usbh: stringdesc1 err(%02x)", status);
-        }
+        status = capture_usb_string_descriptor(ep0_size, DevDesc_Buf[14], 1u);
+        (void)status;
     }
 
     if (DevDesc_Buf[15])
     {
         LOG_DEBUG("usbh: get StringDesc2: ");
-        status = USBFSH_GetStrDescr(ep0_size, DevDesc_Buf[15], Com_Buf, &descriptor_size);
-        if (status == ERR_SUCCESS)
-        {
-            assign_usb_string_descriptor(&string_descriptor, Com_Buf, Com_Buf[0]);
-            USBD_StringDescriptor[2] = string_descriptor;
-            user_set_connected_usb_string_descriptor(2u, Com_Buf, Com_Buf[0]);
-        }
-        else
-        {
-            LOG_ERROR("usbh: stringdesc2 err(%02x)", status);
-        }
+        status = capture_usb_string_descriptor(ep0_size, DevDesc_Buf[15], 2u);
+        (void)status;
     }
 
     if (DevDesc_Buf[16])
     {
         LOG_DEBUG("usbh: get StringDesc3: ");
-        status = USBFSH_GetStrDescr(ep0_size, DevDesc_Buf[16], Com_Buf, &descriptor_size);
-        if (status == ERR_SUCCESS)
-        {
-            assign_usb_string_descriptor(&string_descriptor, Com_Buf, Com_Buf[0]);
-            USBD_StringDescriptor[3] = string_descriptor;
-            user_set_connected_usb_string_descriptor(3u, Com_Buf, Com_Buf[0]);
-        }
-        else
-        {
-            LOG_ERROR("usbh: stringdesc3 err(%02x)", status);
-        }
+        status = capture_usb_string_descriptor(ep0_size, DevDesc_Buf[16], 3u);
+        (void)status;
     }
     return ERR_SUCCESS;
 }
