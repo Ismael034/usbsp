@@ -35,8 +35,8 @@
 static const uint8_t tab_usb_cdc_dev_des[18] = {
     0x12, 0x01, 0x10, 0x01,
     0xEF, 0x02, 0x01, 0x40,
-    0x09, 0x12, 0x01, 0x00,
-    0x00, 0x30,
+    0x09, 0x12, 0x00, 0xCD,
+    0x05, 0x30,
     0x01, 0x02, 0x03, 0x01
 };
 
@@ -66,11 +66,11 @@ static const uint8_t tab_usb_cdc_cfg_des[] = {
 
 static const uint8_t tab_usb_lid_str_des[] = { 0x04, 0x03, 0x09, 0x04 };
 
-static const uint8_t usb_dev_para_cdc_serial_str[] =     "usbsp-0001";
-static const uint8_t usb_dev_para_cdc_product_str[] =    "usbsp";
-static const uint8_t usb_dev_para_cdc_manufacture_str[] = "usbsp";
-static const uint8_t usb_dev_para_cdc_logs_str[] =       "usbsp logs (cdc)";
-static const uint8_t usb_dev_para_webusb_str[] =         "usbsp";
+static const uint8_t usb_dev_para_cdc_serial_str[] =     "USBsp-cd00";
+static const uint8_t usb_dev_para_cdc_product_str[] =    "USBsp";
+static const uint8_t usb_dev_para_cdc_manufacture_str[] = "USBsp";
+static const uint8_t usb_dev_para_cdc_logs_str[] =       "USBsp UART";
+static const uint8_t usb_dev_para_webusb_str[] =         "USBsp";
 
 static uint8_t tab_cdc_line_coding[] = {
     0x85, 0x20, 0x00, 0x00,
@@ -446,8 +446,18 @@ static void usb_irq_process_handler(void)
                                             p_descr = str_buf;
                                             break;
                                         default:
-                                            len = 0;
+                                        {
+                                            uint16_t extra_len = 0;
+                                            if (usb_webusb_get_string_descriptor((uint8_t)(setup_req->wValue & 0xff), &p_descr, &extra_len)) {
+                                                if (extra_len > 0xFF) {
+                                                    extra_len = 0xFF;
+                                                }
+                                                len = (uint8_t)extra_len;
+                                            } else {
+                                                len = 0;
+                                            }
                                             break;
+                                        }
                                     }
                                     break;
                                 default:

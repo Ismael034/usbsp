@@ -104,7 +104,7 @@ export default function ConfigurationTab({
                 label="PID (hex)"
                 value={config.pid}
                 onChange={(e) => setConfig((prev) => ({ ...prev, pid: sanitizeHex4Input(e.target.value) }))}
-                placeholder="0001"
+                placeholder="CD00"
               />
               <HexStepperField
                 label="bcdDevice (hex)"
