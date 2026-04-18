@@ -35,6 +35,8 @@ const CMD_GET_VERSIONS = 0x10;
 const CMD_GET_ACTIVE_USB_INFO = 0x11;
 const CMD_CAPTURE_POLL = 0x20;
 const USB_CONNECT_STEP_TIMEOUT_MS = 10000;
+const ACTIVE_USB_INFO_MAX_BYTES = EEPROM_SIZE;
+const ACTIVE_USB_INFO_CHUNK_BYTES = 58;
 
 async function withPromiseTimeout(promise, timeoutMs, label) {
   const ms = Number.isFinite(timeoutMs) ? timeoutMs : 0;
@@ -295,9 +297,9 @@ export function useUsbspApp({ log, notify, reportError }) {
   const [connected, setConnected] = useState(false);
   const [busy, setBusy] = useState(false);
   const [config, setConfig] = useState({
-    vid: "1209",
-    pid: "0001",
-    bcdDevice: "0100",
+    vid: "",
+    pid: "",
+    bcdDevice: "",
     manufacturer: "",
     product: "",
     serial: "",
@@ -482,11 +484,12 @@ export function useUsbspApp({ log, notify, reportError }) {
       if (!deviceRef.current) return;
 
       const chunks = [];
-      let totalLen = null;
+      let expectedTotalLen = null;
       let offset = 0;
 
-      while (totalLen == null || offset < totalLen) {
-        const requestLen = Math.min(59, totalLen == null ? 59 : totalLen - offset);
+      while (expectedTotalLen == null || offset < expectedTotalLen) {
+        const remaining = expectedTotalLen == null ? ACTIVE_USB_INFO_CHUNK_BYTES : expectedTotalLen - offset;
+        const requestLen = Math.min(ACTIVE_USB_INFO_CHUNK_BYTES, remaining);
         const resp = await transferRaw(
           new Uint8Array([
             CMD_GET_ACTIVE_USB_INFO,
@@ -504,16 +507,38 @@ export function useUsbspApp({ log, notify, reportError }) {
           throw new Error(`USB info read failed rc=${resp[1]} offset=${offset} req=${requestLen}`);
         }
 
-        totalLen = (resp[2] | (resp[3] << 8)) >>> 0;
-        const copyLen = resp[4] ?? 0;
+        const reportedTotalLen = (resp[2] | (resp[3] << 8)) >>> 0;
+        if (reportedTotalLen > ACTIVE_USB_INFO_MAX_BYTES) {
+          throw new Error(`USB info: reported length ${reportedTotalLen} exceeds ${ACTIVE_USB_INFO_MAX_BYTES}`);
+        }
+        if (expectedTotalLen == null) {
+          expectedTotalLen = reportedTotalLen;
+        } else if (reportedTotalLen !== expectedTotalLen) {
+          throw new Error(`USB info: length changed from ${expectedTotalLen} to ${reportedTotalLen} at offset ${offset}`);
+        }
+
+        const reportedCopyLen = resp[4] ?? 0;
+        const availableLen = Math.max(0, resp.length - 5);
+        const remainingLen = expectedTotalLen - offset;
+        if (reportedCopyLen > availableLen) {
+          throw new Error(`USB info: response says ${reportedCopyLen} bytes but only ${availableLen} arrived`);
+        }
+
+        const copyLen = Math.min(reportedCopyLen, requestLen, remainingLen);
+        if (reportedCopyLen !== copyLen) {
+          log(`USB info: clamped chunk len=${reportedCopyLen} to ${copyLen} at offset=${offset} total=${expectedTotalLen}`);
+        }
+
         const chunk = resp.slice(5, 5 + copyLen);
         chunks.push(chunk);
         offset += chunk.length;
 
-        if (copyLen === 0) break;
+        if (copyLen === 0 && offset < expectedTotalLen) {
+          throw new Error(`USB info: short read at offset ${offset} of ${expectedTotalLen}`);
+        }
       }
 
-      const image = new Uint8Array(totalLen ?? 0);
+      const image = new Uint8Array(expectedTotalLen ?? 0);
       let cursor = 0;
       for (const chunk of chunks) {
         image.set(chunk, cursor);
@@ -588,7 +613,7 @@ export function useUsbspApp({ log, notify, reportError }) {
           throw err;
         }
 
-        const productName = device.productName || "usbsp";
+        const productName = device.productName || "USBsp";
         log(`CONNECT: selected ${productName} (${hex4(device.vendorId)}:${hex4(device.productId)})`);
 
         try {
@@ -649,36 +674,38 @@ export function useUsbspApp({ log, notify, reportError }) {
 
   const disconnect = useCallback(async () => {
     try {
-      await withBusy(async () => {
-        captureLoopRef.current = false;
-        flushCapturedPackets(true);
-        flushDroppedCaptureLog(true);
-        const device = deviceRef.current;
-        if (!device) return;
-        try {
-          await device.releaseInterface(IFACE);
-        } catch {
-          // ignore
+      captureLoopRef.current = false;
+      flushCapturedPackets(true);
+      flushDroppedCaptureLog(true);
+
+      const device = deviceRef.current;
+      try {
+        if (device?.opened) {
+          try {
+            await device.releaseInterface(IFACE);
+          } catch {
+            // ignore
+          }
+          try {
+            await device.close();
+          } catch {
+            // ignore
+          }
         }
-        try {
-          await device.close();
-        } catch {
-          // ignore
-        } finally {
-          deviceRef.current = null;
-          setConnected(false);
-          setCaptureRunning(false);
-          setVersions({ ch572d: null, ch32v203: null });
-          capturePendingPacketsRef.current = [];
-          capturePendingDroppedRef.current = 0;
-          log("Disconnected");
-          notify("info", "Disconnected.");
-        }
-      });
+      } finally {
+        deviceRef.current = null;
+        setConnected(false);
+        setCaptureRunning(false);
+        setVersions({ ch572d: null, ch32v203: null });
+        capturePendingPacketsRef.current = [];
+        capturePendingDroppedRef.current = 0;
+        log("Disconnected");
+        notify("info", "Disconnected.");
+      }
     } catch (err) {
       reportError(err, "Failed to disconnect cleanly.");
     }
-  }, [flushCapturedPackets, flushDroppedCaptureLog, log, notify, reportError, withBusy]);
+  }, [flushCapturedPackets, flushDroppedCaptureLog, log, notify, reportError]);
 
   const writeConfig = useCallback(async () => {
     try {
@@ -761,7 +788,7 @@ export function useUsbspApp({ log, notify, reportError }) {
         setDeviceConfigSnapshot(nextConfig);
         log(`CONFIG: wrote ${tlvs.length} record(s) in ${writes} write(s)`);
         log("CH32 reset: command sent after save");
-        notify("success", "Settings saved. CH32V203 reset.");
+        notify("success", "Settings saved.");
       });
     } catch (err) {
       reportError(err, "Failed to write configuration.");
@@ -1009,7 +1036,7 @@ export function useUsbspApp({ log, notify, reportError }) {
     config,
     connected,
     disableActions: busy || !connected || captureRunning,
-    disableConnect: busy || connected || !webUsbSupport.supported,
+    disableConnect: connected ? false : busy || !webUsbSupport.supported,
     eepAddr,
     eepLen,
     eepromReadResult,

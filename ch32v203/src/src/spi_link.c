@@ -14,6 +14,7 @@
 #define SPI_VERSION_MAGIC 0x81U
 #define SPI_CAPTURE_MAGIC 0xC2U
 #define SPI_USB_INFO_MAGIC 0x83U
+#define SPI_USB_INFO_HEADER_LEN 6U
 #define SPI_CAPTURE_PAYLOAD_INT_MAX 18U
 #define SPI_CAPTURE_PAYLOAD_INT_MIN 8U
 #define SPI_CAPTURE_PAYLOAD_OTHER_MAX 12U
@@ -96,15 +97,15 @@ static void spi_link_prepare_usb_info_reply(void)
         return;
     }
 
-    if (req_len == 0U || req_len > (SPI_LINK_FRAME_LEN - 5U)) {
-        req_len = (uint8_t)(SPI_LINK_FRAME_LEN - 5U);
+    if (req_len == 0U || req_len > (SPI_LINK_FRAME_LEN - SPI_USB_INFO_HEADER_LEN)) {
+        req_len = (uint8_t)(SPI_LINK_FRAME_LEN - SPI_USB_INFO_HEADER_LEN);
     }
 
     if (offset < total_len) {
         uint16_t remain = (uint16_t)(total_len - offset);
         copy_len = (remain > req_len) ? req_len : (uint8_t)remain;
-        if (copy_len > (SPI_LINK_FRAME_LEN - 4U)) {
-            copy_len = (uint8_t)(SPI_LINK_FRAME_LEN - 4U);
+        if (copy_len > (SPI_LINK_FRAME_LEN - SPI_USB_INFO_HEADER_LEN)) {
+            copy_len = (uint8_t)(SPI_LINK_FRAME_LEN - SPI_USB_INFO_HEADER_LEN);
         }
     }
 
@@ -112,8 +113,10 @@ static void spi_link_prepare_usb_info_reply(void)
     spi_tx_buf[1] = (uint8_t)(total_len & 0xFFU);
     spi_tx_buf[2] = (uint8_t)((total_len >> 8) & 0xFFU);
     spi_tx_buf[3] = copy_len;
+    spi_tx_buf[4] = (uint8_t)(offset & 0xFFU);
+    spi_tx_buf[5] = (uint8_t)((offset >> 8) & 0xFFU);
     if (copy_len != 0U) {
-        memcpy((void *)&spi_tx_buf[4], &spi_usb_info_buf[offset], copy_len);
+        memcpy((void *)&spi_tx_buf[SPI_USB_INFO_HEADER_LEN], &spi_usb_info_buf[offset], copy_len);
     }
 }
 
