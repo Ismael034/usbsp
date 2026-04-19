@@ -1,39 +1,35 @@
 import { useCallback, useState } from "react";
 
-function isWindowsBrowser() {
-  if (typeof navigator === "undefined") {
-    return false;
-  }
-
-  const platform = navigator.userAgentData?.platform ?? navigator.platform ?? "";
-  const userAgent = navigator.userAgent ?? "";
-  return /windows/i.test(platform) || /windows/i.test(userAgent);
-}
+export const KNOWN_ISSUES_URL = "https://github.com/Ismael034/usbsp/wiki/Common-known-issues";
 
 function formatErrorMessage(err) {
   const message = err?.message ?? String(err);
   if (/claiminterface/i.test(message) || /unable to claim interface/i.test(message)) {
-    if (isWindowsBrowser()) {
-      return "Unable to claim the USB interface. On Windows, install WinUSB for the usbsp WebUSB interface with Zadig: https://zadig.akeo.ie/";
-    }
-    return "Unable to claim the USB interface. Close other browser tabs or apps using this device and try again.";
+    return "Unable to claim the USB interface.";
   }
   return message;
+}
+
+function shouldLinkKnownIssues(message) {
+  return /claiminterface|unable to claim interface|webusb|requestdevice|no device selected|access denied|permission denied|failed to open usb/i.test(
+    message ?? ""
+  );
 }
 
 export function useNotifications() {
   const [alert, setAlert] = useState({
     open: false,
     severity: "info",
-    message: ""
+    message: "",
+    link: null
   });
 
   const log = useCallback((message) => {
     console.log(String(message));
   }, []);
 
-  const notify = useCallback((severity, message) => {
-    setAlert({ open: true, severity, message: String(message) });
+  const notify = useCallback((severity, message, link = null) => {
+    setAlert({ open: true, severity, message: String(message), link });
   }, []);
 
   const closeAlert = useCallback((_, reason) => {
@@ -45,7 +41,18 @@ export function useNotifications() {
     (err, fallback = "Operation failed") => {
       const message = formatErrorMessage(err);
       log(message);
-      notify("error", message || fallback);
+      const text = message || fallback;
+      notify(
+        "error",
+        text,
+        shouldLinkKnownIssues(text)
+          ? {
+              prefix: "If this keeps happening check ",
+              label: "Common known issues",
+              href: KNOWN_ISSUES_URL
+            }
+          : null
+      );
     },
     [log, notify]
   );

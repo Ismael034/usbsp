@@ -11,6 +11,7 @@ import {
   Container,
   Divider,
   IconButton,
+  Link,
   Snackbar,
   Stack,
   Tab,
@@ -96,6 +97,7 @@ export default function App({ colorMode = "light", onToggleColorMode = null }) {
             <Chip label={statusChip.label} color={statusChip.color} variant="filled" size="small" sx={{ px: 0.25 }} />
             <Button
               variant="contained"
+              color={app.connected ? "error" : "primary"}
               startIcon={<PowerSettingsNewIcon />}
               onClick={app.connected ? app.disconnect : app.connect}
               disabled={app.disableConnect}
@@ -205,6 +207,15 @@ export default function App({ colorMode = "light", onToggleColorMode = null }) {
       >
         <Alert onClose={notifications.closeAlert} severity={notifications.alert.severity} sx={{ width: "100%" }}>
           {notifications.alert.message}
+          {notifications.alert.link ? (
+            <>
+              {" "}
+              {notifications.alert.link.prefix ?? ""}
+              <Link href={notifications.alert.link.href} target="_blank" rel="noreferrer" color="inherit" underline="always">
+                {notifications.alert.link.label}
+              </Link>
+            </>
+          ) : null}
         </Alert>
       </Snackbar>
     </Box>
