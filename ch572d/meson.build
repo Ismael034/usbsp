@@ -23,7 +23,10 @@ firmware_sources = files(
     'src/src/usb/usb_webusb_cmds.c',
     'src/src/usb/webusb_cmds/webusb_cmd_eeprom_read.c',
     'src/src/usb/webusb_cmds/webusb_cmd_eeprom_write.c',
+    'src/src/usb/webusb_cmds/webusb_cmd_ch32_reset.c',
     'src/src/usb/webusb_cmds/webusb_cmd_get_versions.c',
+    'src/src/usb/webusb_cmds/webusb_cmd_get_active_usb_info.c',
+    'src/src/usb/webusb_cmds/webusb_cmd_capture_poll.c',
     'src/src/usb/webusb_cmds/webusb_cmd_spi_pingpong.c',
     'src/src/usb/webusb_cmds/webusb_cmd_spi_text.c',
     # StdPeriphDriver

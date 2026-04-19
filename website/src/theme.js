@@ -2,7 +2,7 @@ import { createTheme } from "@mui/material/styles";
 
 // Visual direction: "industrial console" (crisp surfaces, sharp-ish geometry, high contrast,
 // minimal but intentional color).
-const ink = "#0b1220";
+const ink = "#111111";
 const cobalt = "#0b5fff";
 const ember = "#ff6b00";
 
@@ -19,12 +19,12 @@ export function buildTheme(mode = "light") {
       error: { main: "#dc2626" },
       info: { main: "#0284c7" },
       text: isDark
-        ? { primary: "#e2e8f0", secondary: "#94a3b8" }
+        ? { primary: "#f3f4f6", secondary: "#a3a3a3" }
         : { primary: ink, secondary: "#334155" },
       background: isDark
-        ? { default: "#0b1220", paper: "#0f172a" }
+        ? { default: "#0f0f10", paper: "#18181b" }
         : { default: "#f6f6f2", paper: "#ffffff" },
-      divider: isDark ? "rgba(226,232,240,0.12)" : "#d7dbe3"
+      divider: isDark ? "rgba(255,255,255,0.10)" : "#d7dbe3"
     },
 
     // Kill the overly-rounded look.

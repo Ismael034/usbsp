@@ -1,5 +1,5 @@
 export const VID = 0x1209;
-export const PID = 0x0001;
+export const PID = 0xcd00;
 export const IFACE = 2;
 export const EP_OUT = 2;
 export const EP_IN = 2;
@@ -20,4 +20,3 @@ export const FLAG_SELF_POWERED = 1 << 0;
 export const FLAG_REMOTE_WAKEUP = 1 << 1;
 export const FLAG_BOOT_CONNECTED = 1 << 2;
 export const FLAG_CAPTURE_ON_BOOT = 1 << 3;
-

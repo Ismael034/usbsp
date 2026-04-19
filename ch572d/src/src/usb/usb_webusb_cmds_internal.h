@@ -10,7 +10,10 @@ enum {
     WEBUSB_CMD_SPI_TEXT = 0x02,
     WEBUSB_CMD_SPI_PINGPONG = 0x03,
     WEBUSB_CMD_EEPROM_WRITE = 0x04,
+    WEBUSB_CMD_CH32_RESET = 0x05,
     WEBUSB_CMD_GET_VERSIONS = 0x10,
+    WEBUSB_CMD_GET_ACTIVE_USB_INFO = 0x11,
+    WEBUSB_CMD_CAPTURE_POLL = 0x20,
 };
 
 typedef uint8_t (*webusb_cmd_fn)(const uint8_t *buf, uint8_t len, uint8_t *resp, uint8_t *resp_len);
@@ -18,7 +21,10 @@ typedef uint8_t (*webusb_cmd_fn)(const uint8_t *buf, uint8_t len, uint8_t *resp,
 uint8_t webusb_cmd_eeprom_read(const uint8_t *buf, uint8_t len, uint8_t *resp, uint8_t *resp_len);
 uint8_t webusb_cmd_eeprom_write(const uint8_t *buf, uint8_t len, uint8_t *resp, uint8_t *resp_len);
 uint8_t webusb_cmd_get_versions(const uint8_t *buf, uint8_t len, uint8_t *resp, uint8_t *resp_len);
+uint8_t webusb_cmd_get_active_usb_info(const uint8_t *buf, uint8_t len, uint8_t *resp, uint8_t *resp_len);
 uint8_t webusb_cmd_spi_text(const uint8_t *buf, uint8_t len, uint8_t *resp, uint8_t *resp_len);
 uint8_t webusb_cmd_spi_pingpong(const uint8_t *buf, uint8_t len, uint8_t *resp, uint8_t *resp_len);
+uint8_t webusb_cmd_ch32_reset(const uint8_t *buf, uint8_t len, uint8_t *resp, uint8_t *resp_len);
+uint8_t webusb_cmd_capture_poll(const uint8_t *buf, uint8_t len, uint8_t *resp, uint8_t *resp_len);
 
 #endif

@@ -21,11 +21,16 @@ import ClearIcon from "@mui/icons-material/Clear";
 import { loadUsbIds } from "../usbids.js";
 import { hasText } from "../lib/usbsp/utils.js";
 
+const USB_LOOKUP_PAGE_SIZE = 100;
+const USB_LOOKUP_PRELOAD_PX = 260;
+
 export default function UsbLookupDialog({ open, onClose, onApply }) {
   const [usbLookupQuery, setUsbLookupQuery] = useState("");
   const [usbLookupVendor, setUsbLookupVendor] = useState(null); // { vid, name } | null
   const [usbLookupProduct, setUsbLookupProduct] = useState(null); // { vid, pid, vendorName, productName } | null
   const [usbLookupProductQuery, setUsbLookupProductQuery] = useState("");
+  const [usbVendorVisibleCount, setUsbVendorVisibleCount] = useState(USB_LOOKUP_PAGE_SIZE);
+  const [usbProductVisibleCount, setUsbProductVisibleCount] = useState(USB_LOOKUP_PAGE_SIZE);
   const usbLookupVendorInputRef = useRef(null);
   const usbLookupProductInputRef = useRef(null);
   const usbLookupAbortRef = useRef(null);
@@ -53,24 +58,29 @@ export default function UsbLookupDialog({ open, onClose, onApply }) {
 
   const usbVendorsTotal = usbVendorsArray.length;
 
-  const usbVendorResults = useMemo(() => {
+  const usbVendorMatches = useMemo(() => {
     const q = String(usbLookupQuery ?? "").trim().toLowerCase().replace(/^0x/, "");
-    if (!q) return usbVendorsArray.slice(0, 400);
+    if (!q) return usbVendorsArray;
     return usbVendorsArray
-      .filter((v) => v.vid.includes(q) || v.name.toLowerCase().includes(q))
-      .slice(0, 400);
+      .filter((v) => v.vid.includes(q) || v.name.toLowerCase().includes(q));
   }, [usbLookupQuery, usbVendorsArray]);
+  const usbVendorMatchesTotal = usbVendorMatches.length;
+
+  const usbVendorResults = useMemo(
+    () => usbVendorMatches.slice(0, usbVendorVisibleCount),
+    [usbVendorMatches, usbVendorVisibleCount]
+  );
 
   const usbProductsTotalForVendor = useMemo(() => {
     if (usbIds.status !== "ready" || !usbIds.productsByVid || !usbLookupVendor?.vid) return 0;
     return (usbIds.productsByVid.get(usbLookupVendor.vid) ?? []).length;
   }, [usbIds, usbLookupVendor]);
 
-  const usbProductResults = useMemo(() => {
+  const usbProductMatches = useMemo(() => {
     if (usbIds.status !== "ready" || !usbIds.productsByVid || !usbLookupVendor?.vid) return [];
     const list = usbIds.productsByVid.get(usbLookupVendor.vid) ?? [];
     const q = String(usbLookupProductQuery ?? "").trim().toLowerCase().replace(/^0x/, "");
-    if (!q) return list.slice(0, 400);
+    if (!q) return list;
     const wantPid = /^[0-9a-f]{1,4}$/.test(q) ? q.padStart(4, "0") : null;
     return list
       .filter((p) => {
@@ -80,9 +90,29 @@ export default function UsbLookupDialog({ open, onClose, onApply }) {
           p.productName.toLowerCase().includes(q) ||
           p.vendorName.toLowerCase().includes(q)
         );
-      })
-      .slice(0, 400);
+      });
   }, [usbIds, usbLookupVendor, usbLookupProductQuery]);
+  const usbProductMatchesTotal = usbProductMatches.length;
+
+  const usbProductResults = useMemo(
+    () => usbProductMatches.slice(0, usbProductVisibleCount),
+    [usbProductMatches, usbProductVisibleCount]
+  );
+
+  const handlePagedListScroll = (event, visibleCount, totalCount, setVisibleCount) => {
+    const node = event.currentTarget;
+    if (visibleCount >= totalCount) return;
+    if (node.scrollTop + node.clientHeight < node.scrollHeight - USB_LOOKUP_PRELOAD_PX) return;
+    setVisibleCount((prev) => Math.min(prev + USB_LOOKUP_PAGE_SIZE, totalCount));
+  };
+
+  useEffect(() => {
+    setUsbVendorVisibleCount(USB_LOOKUP_PAGE_SIZE);
+  }, [usbLookupQuery, open]);
+
+  useEffect(() => {
+    setUsbProductVisibleCount(USB_LOOKUP_PAGE_SIZE);
+  }, [usbLookupProductQuery, usbLookupVendor, open]);
 
   useEffect(() => {
     if (!open) return;
@@ -130,9 +160,9 @@ export default function UsbLookupDialog({ open, onClose, onApply }) {
       <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
         <SearchIcon fontSize="small" />
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          Search USB IDs (external database)
+          Search USB IDs
           <Typography variant="body2" sx={{ color: "text.secondary" }}>
-            Step 1: select a vendor (VID). Step 2: select a product (PID).
+            Step 1: select vendor (VID). Step 2: select product (PID).
           </Typography>
         </Box>
         <IconButton aria-label="close" onClick={onClose}>
@@ -186,7 +216,7 @@ export default function UsbLookupDialog({ open, onClose, onApply }) {
               placeholder={
                 usbLookupVendor
                   ? `Filter products for VID ${usbLookupVendor.vid.toUpperCase()} (e.g. 6001, uart)`
-                  : "Select a vendor to enable product search"
+                  : "Select a vendor to search products"
               }
               size="small"
               disabled={!usbLookupVendor}
@@ -220,7 +250,7 @@ export default function UsbLookupDialog({ open, onClose, onApply }) {
         {usbIds.status === "error" && (
           <Box sx={{ mt: 2, p: 1.5, border: "1px solid #d7dbe3", borderRadius: 2 }}>
             <Typography variant="body2" sx={{ color: "text.secondary" }}>
-              Failed to load the external USB IDs database: {usbIds.error}
+              Failed to load USB database: {usbIds.error}
             </Typography>
           </Box>
         )}
@@ -228,12 +258,20 @@ export default function UsbLookupDialog({ open, onClose, onApply }) {
         <Grid container spacing={2} sx={{ mt: 0.5 }}>
           <Grid item xs={12} md={5}>
             <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
-              Vendors (VID)
+              Vendors
             </Typography>
             <Box sx={{ border: "1px solid #d7dbe3", borderRadius: 2, overflow: "hidden" }}>
               <List
                 dense
                 disablePadding
+                onScroll={(event) =>
+                  handlePagedListScroll(
+                    event,
+                    usbVendorResults.length,
+                    usbVendorMatches.length,
+                    setUsbVendorVisibleCount
+                  )
+                }
                 sx={{ maxHeight: 360, overflow: "auto", "& .MuiListItemButton-root": { transition: "none" } }}
               >
                 {usbVendorResults.map((v) => (
@@ -257,25 +295,33 @@ export default function UsbLookupDialog({ open, onClose, onApply }) {
             </Box>
             <Typography variant="caption" sx={{ display: "block", mt: 0.75, color: "text.secondary" }}>
               {usbLookupQuery
-                ? "Filtered vendor results (showing up to 400)."
-                : `Showing the first 400 of ${usbVendorsTotal} vendors. Use the filter to find a specific vendor faster.`}
+                ? `${usbVendorMatchesTotal} result${usbVendorMatchesTotal === 1 ? "" : "s"}`
+                : `${usbVendorsTotal} vendors`}
             </Typography>
           </Grid>
 
           <Grid item xs={12} md={7}>
             <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
-              Products (VID:PID)
+              Products
             </Typography>
             <Box sx={{ border: "1px solid #d7dbe3", borderRadius: 2, overflow: "hidden" }}>
               <List
                 dense
                 disablePadding
+                onScroll={(event) =>
+                  handlePagedListScroll(
+                    event,
+                    usbProductResults.length,
+                    usbProductMatches.length,
+                    setUsbProductVisibleCount
+                  )
+                }
                 sx={{ maxHeight: 360, overflow: "auto", "& .MuiListItemButton-root": { transition: "none" } }}
               >
                 {!usbLookupVendor && (
                   <ListItemText
-                    primary="Select a vendor first"
-                    secondary="Products will appear here after you choose a VID"
+                    primary="Select a vendor"
+                    secondary="Products appear here after selecting a vendor"
                     sx={{ px: 2, py: 1.5 }}
                   />
                 )}
@@ -310,7 +356,7 @@ export default function UsbLookupDialog({ open, onClose, onApply }) {
                 {usbLookupVendor && !usbProductResults.length && (
                   <ListItemText
                     primary="No results"
-                    secondary="Try a different product filter"
+                    secondary="Try a different filter"
                     sx={{ px: 2, py: 1.5 }}
                   />
                 )}
@@ -319,8 +365,8 @@ export default function UsbLookupDialog({ open, onClose, onApply }) {
             {usbLookupVendor && (
               <Typography variant="caption" sx={{ display: "block", mt: 0.75, color: "text.secondary" }}>
                 {usbLookupProductQuery
-                  ? "Filtered product results (showing up to 400)."
-                  : `Showing the first 400 of ${usbProductsTotalForVendor} products for this vendor. Use the product filter to narrow down.`}
+                  ? `${usbProductMatchesTotal} result${usbProductMatchesTotal === 1 ? "" : "s"}`
+                  : `${usbProductsTotalForVendor} products`}
               </Typography>
             )}
           </Grid>
@@ -356,7 +402,7 @@ export default function UsbLookupDialog({ open, onClose, onApply }) {
             onClose?.();
           }}
         >
-          OK
+          Apply
         </Button>
       </Box>
     </Dialog>

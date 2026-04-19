@@ -8,6 +8,7 @@
 #include "user.h"
 #include "app.h"
 #include "eeprom.h"
+#include "spi_link.h"
 #include <stdbool.h>
 #include <string.h>
 
@@ -15,6 +16,15 @@ static void handle_device_disconnection(void);
 static uint8_t handle_device_connection(void);
 static uint8_t handle_endpoint_transfer(void);
 static uint8_t reenum_requested = 0;
+
+typedef struct
+{
+    uint8_t valid;
+    uint16_t len;
+    uint8_t buf[MAX_PKT_SZ];
+} relay_in_slot_t;
+
+static relay_in_slot_t relay_in_slots[MAX_EP_NUM];
 
 static void stop_relay_communication(void)
 {
@@ -28,12 +38,13 @@ static void stop_relay_communication(void)
     memset(Host_OutToggle, 0, sizeof(Host_OutToggle));
     memset(Host_InBusy, 0, sizeof(Host_InBusy));
     memset(Host_InToggle, 0, sizeof(Host_InToggle));
+    memset(relay_in_slots, 0, sizeof(relay_in_slots));
 }
 
 static void print_banner(void)
 {
     LOG_INFO("--------------------------------------------------------");
-    LOG_INFO("                      usbsp v0.1.0                      ");
+    LOG_INFO("                      USBsp v0.1.0                      ");
     LOG_INFO("--------------------------------------------------------");
 }
 
@@ -138,6 +149,8 @@ static uint8_t init_system(void)
     if ((status = init_usb_host()) != ERR_SUCCESS) return status;
     if ((status = init_usb_interrupts()) != ERR_SUCCESS) return status;
     if ((status = init_peripherals()) != ERR_SUCCESS) return status;
+    spi_link_init();
+    user_clear_connected_usb_snapshot();
 
     memset(&RootHubDev, 0, sizeof(ROOT_HUB_DEVICE));
     memset(&HostCtl[DEF_USBFS_PORT_INDEX * DEF_ONE_USB_SUP_DEV_TOTAL], 0,
@@ -186,9 +199,25 @@ static uint8_t handle_device_connection(void)
     LOG_INFO("usb: Max packet size: %d", RootHubDev.bEp0MaxPks);
 
     usbh_get_string_descriptors(RootHubDev.bEp0MaxPks);
+    eeprom_apply_usb_overrides();
     stop_relay_communication();
-    usb_relay_driver_init();
-    LOG_INFO("usb: Relay side initialized");
+
+    if (eeprom_usb_info.has_attach_delay_ms && eeprom_usb_info.attach_delay_ms != 0u)
+    {
+        LOG_INFO("usb: delaying upstream attach by %u ms", eeprom_usb_info.attach_delay_ms);
+        Delay_Ms(eeprom_usb_info.attach_delay_ms);
+    }
+
+    if ((eeprom_usb_info.has_flags == 0u) || ((eeprom_usb_info.flags & EEPROM_FLAG_BOOT_CONNECTED) != 0u))
+    {
+        usb_relay_driver_init();
+        LOG_INFO("usb: Relay side initialized");
+    }
+    else
+    {
+        LOG_INFO("usb: Relay kept disconnected by EEPROM bootConnected=0");
+    }
+
     LOG_DEBUG("number of interfaces: %d", HostCtl[index].InterfaceNum);
     RootHubDev.bStatus = ROOT_DEV_SUCCESS;
     reenum_requested = 0u;
@@ -203,6 +232,7 @@ static void handle_device_disconnection(void)
     stop_relay_communication();
     memset(&HostCtl[device_index], 0, sizeof(HOST_CTL));
     memset(&RootHubDev, 0, sizeof(ROOT_HUB_DEVICE));
+    user_clear_connected_usb_snapshot();
     reenum_requested = 0u;
 
     LOG_INFO("usb: port dev out");
@@ -210,10 +240,11 @@ static void handle_device_disconnection(void)
 }
 
 /* Handle endpoint TX transfer */
-static uint8_t handle_endpoint_tx(uint8_t index, uint8_t ep_out, uint8_t *temp_buf, uint16_t *len)
+static uint8_t handle_endpoint_tx(uint8_t index, uint8_t ep_out, uint8_t ep_type, uint8_t *temp_buf, uint16_t *len)
 {
     uint8_t tx_status = ERR_USB_TRANSFER;
     uint8_t sent_any = 0;
+    uint8_t has_space = 0u;
 
     if (index >= DEF_ONE_USB_SUP_DEV_TOTAL)
     {
@@ -253,11 +284,13 @@ static uint8_t handle_endpoint_tx(uint8_t index, uint8_t ep_out, uint8_t *temp_b
 
         if (tx_status == ERR_SUCCESS)
         {
-            (void)pop_packet_for_main(ep_out);
+            spi_link_capture_packet(0u, ep_out, ep_type, temp_buf, *len);
+            has_space = 0u;
+            (void)pop_packet_for_main_and_check_space(ep_out, &has_space);
             LOG_DEBUG("usb: ep%u TX pop depth_after=%u pending=%u", ep_out,
                       (unsigned)isr_out_queue[ep_out].count, (unsigned)isr_out_pending);
 
-            if (isr_queue_has_space(ep_out))
+            if (has_space != 0u)
             {
                 SetEPRxStatus(ep_out, EP_RX_VALID);
                 LOG_DEBUG("usb: ep%u RX->VALID (space available depth=%u)", ep_out,
@@ -298,37 +331,61 @@ static uint8_t handle_endpoint_tx(uint8_t index, uint8_t ep_out, uint8_t *temp_b
 }
 
 /* Handle endpoint RX transfer */
-static uint8_t handle_endpoint_rx(uint8_t index, uint8_t intf_num, uint8_t ep_num, uint8_t ep_addr)
+static uint8_t handle_endpoint_rx(uint8_t index, uint8_t intf_num, uint8_t ep_num, uint8_t ep_addr, uint8_t ep_type)
 {
+    relay_in_slot_t *slot;
+    uint8_t status;
+
     if (index >= DEF_ONE_USB_SUP_DEV_TOTAL || intf_num >= HostCtl[index].InterfaceNum)
     {
         LOG_ERROR("usb: invalid index %d or interface %d", index, intf_num);
         return ERR_USB_UNKNOWN;
     }
-    if (bDeviceState != CONFIGURED || _GetEPTxStatus(ep_addr) != EP_TX_NAK)
+    slot = &relay_in_slots[ep_addr];
+
+    if (slot->valid != 0u)
     {
-        return ERR_USB_TRANSFER;
-    }
-    if (UDBD_ENDP_Busy(ep_addr) != 0)
-    {
+        if (bDeviceState == CONFIGURED && _GetEPTxStatus(ep_addr) == EP_TX_NAK &&
+            UDBD_ENDP_Busy(ep_addr) == 0)
+        {
+            status = USBD_ENDP_DataUp(ep_addr, slot->buf, slot->len);
+            if (status == ERR_SUCCESS)
+            {
+                slot->valid = 0u;
+            }
+            return status;
+        }
+
         return ERR_USB_TRANSFER;
     }
 
-    uint8_t status = USBFSH_GetEndpData(ep_addr,
+    status = USBFSH_GetEndpData(ep_addr,
         &HostCtl[index].Interface[intf_num].InEndpTog[ep_num], Com_Buf, &Com_Buf_Len);
     
     if (status == ERR_SUCCESS)
     {
-        if (Com_Buf == NULL || Com_Buf_Len == 0 || Com_Buf_Len > MAX_PKT_SZ)
+        if (Com_Buf == NULL || Com_Buf_Len > MAX_PKT_SZ)
         {
             HostCtl[index].Interface[intf_num].InEndpTog[ep_num] = 0x00;
             return ERR_USB_TRANSFER;
         }
-        status = USBD_ENDP_DataUp(ep_addr, Com_Buf, Com_Buf_Len);
-        if (status != ERR_SUCCESS)
+        spi_link_capture_packet(1u, ep_addr, ep_type, Com_Buf, Com_Buf_Len);
+
+        slot->len = Com_Buf_Len;
+        if (Com_Buf_Len != 0u)
         {
-            LOG_DEBUG("usbd: endp_dataup failed on ep %d, status %d", ep_addr, status);
-            HostCtl[index].ErrorCount++;
+            memcpy(slot->buf, Com_Buf, Com_Buf_Len);
+        }
+        slot->valid = 1u;
+
+        if (bDeviceState == CONFIGURED && _GetEPTxStatus(ep_addr) == EP_TX_NAK &&
+            UDBD_ENDP_Busy(ep_addr) == 0)
+        {
+            status = USBD_ENDP_DataUp(ep_addr, slot->buf, slot->len);
+            if (status == ERR_SUCCESS)
+            {
+                slot->valid = 0u;
+            }
         }
     } else if (status == ERR_USB_DISCON)
     {
@@ -366,7 +423,8 @@ static uint8_t handle_endpoint_transfer(void)
         for (uint8_t ep_num = 0; ep_num < out_endp_num; ep_num++)
         {
             uint8_t ep_out = HostCtl[index].Interface[intf_num].OutEndpAddr[ep_num];
-            uint8_t tx_status = handle_endpoint_tx(index, ep_out, temp_buf, &len);
+            uint8_t ep_type = HostCtl[index].Interface[intf_num].OutEndpType[ep_num] & 0x03u;
+            uint8_t tx_status = handle_endpoint_tx(index, ep_out, ep_type, temp_buf, &len);
             if (tx_status == ERR_USB_DISCON)
             {
                 return tx_status;
@@ -406,7 +464,7 @@ static uint8_t handle_endpoint_transfer(void)
 
                 HostCtl[index].Interface[intf_num].LastInPollTime[ep_num] = current_time;
                 /* Handle RX transfer */
-                rx_status = handle_endpoint_rx(index, intf_num, ep_num, ep_addr);
+                rx_status = handle_endpoint_rx(index, intf_num, ep_num, ep_addr, ep_type);
                 if (rx_status == ERR_USB_DISCON) {
                     return rx_status;
                 }
@@ -460,6 +518,15 @@ int main(void)
                 continue;
             }
             (void)handle_endpoint_transfer();
+        }
+
+        spi_link_task();
+
+        if (user_reset_requested() != 0u)
+        {
+            user_clear_reset_request();
+            LOG_INFO("system: resetting now");
+            NVIC_SystemReset();
         }
     }
 }

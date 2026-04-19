@@ -11,7 +11,7 @@ export default function AboutTab({ webVersion, versions }) {
   return (
     <Stack spacing={2}>
       <Card variant="outlined" sx={cardSx}>
-        <CardHeader title="About" subheader="Versions reported by the connected hardware" />
+        <CardHeader title="About USBsp" subheader="Installed firmware & web version" />
         <CardContent>
           <Divider sx={{ mb: 2 }} />
           <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">

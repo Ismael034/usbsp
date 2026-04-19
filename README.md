@@ -1,4 +1,4 @@
-# usbsp
+# USBsp
 
 A work in progress for a (really) cheap embedded USB packet analyzer. CURRENTLY NOT FUNCTIONAL
 

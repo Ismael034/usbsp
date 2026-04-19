@@ -40,36 +40,43 @@ static void update_out_ep_flow(uint8_t ep_num)
 
 void EP1_IN_Callback(void)
 {
+    SetEPTxStatus(ENDP1, EP_TX_NAK);
 	USBD_Endp_Busy[1] = 0; /* Clear busy flag after transfer */
 }
 
 void EP2_IN_Callback(void)
 {
+    SetEPTxStatus(ENDP2, EP_TX_NAK);
 	USBD_Endp_Busy[2] = 0; /* Clear busy flag after transfer */
 }
 
 void EP3_IN_Callback(void)
 {
+    SetEPTxStatus(ENDP3, EP_TX_NAK);
     USBD_Endp_Busy[3] = 0; /* Clear busy flag after transfer */
 }
 
 void EP4_IN_Callback(void)
 {
+    SetEPTxStatus(ENDP4, EP_TX_NAK);
     USBD_Endp_Busy[4] = 0; /* Clear busy flag after transfer */
 }
 
 void EP5_IN_Callback(void)
 {
+    SetEPTxStatus(ENDP5, EP_TX_NAK);
     USBD_Endp_Busy[5] = 0; /* Clear busy flag after transfer */
 }
 
 void EP6_IN_Callback(void)
 {
+    SetEPTxStatus(ENDP6, EP_TX_NAK);
     USBD_Endp_Busy[6] = 0; /* Clear busy flag after transfer */
 }
 
 void EP7_IN_Callback(void)
 {
+    SetEPTxStatus(ENDP7, EP_TX_NAK);
     USBD_Endp_Busy[7] = 0; /* Clear busy flag after transfer */
 }
 
@@ -167,6 +174,8 @@ uint8_t USBD_ENDP_DataUp(uint8_t endp, uint8_t *pbuf, uint16_t len)
         return USB_ERROR;
     }
 
+    USBD_Endp_Busy[endp] = 1;
+
     switch (endp)
     {
         case 1:
@@ -198,10 +207,9 @@ uint8_t USBD_ENDP_DataUp(uint8_t endp, uint8_t *pbuf, uint16_t len)
             SetEPTxStatus(ENDP7, EP_TX_VALID);
             break;
         default:
+            USBD_Endp_Busy[endp] = 0;
             return USB_ERROR;
     }
-
-    USBD_Endp_Busy[endp] = 1;
 
     return USB_SUCCESS;
 }
