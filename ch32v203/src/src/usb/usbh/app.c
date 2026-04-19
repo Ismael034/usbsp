@@ -31,7 +31,7 @@ static uint16_t endpoint_type_from_attributes(uint8_t attributes)
     }
 }
 
-#define PMA_START_ADDR 0x60u
+#define PMA_START_ADDR 0xC0u
 #define PMA_END_ADDR   0x200u
 
 static uint16_t pma_align2(uint16_t addr)

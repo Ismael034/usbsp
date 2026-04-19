@@ -21,11 +21,11 @@
 /* buffer table base address */
 #define BTABLE_ADDRESS      (0x00)
 
-/* PMA layout (USB FS PMA is 0x000..0x1FF, BTABLE uses 0x000..0x03F) */
-/* Keep all endpoint buffers below 0x200 to avoid DOVR due to PMA overflow. */
-/* EP0 uses 8-byte packets in this project, data endpoints use up to 64 bytes. */
+/* PMA layout (USB FS PMA is 0x000..0x1FF, BTABLE uses 0x000..0x03F). */
+/* Reserve 64 bytes for both EP0 RX and EP0 TX so larger mirrored bMaxPacketSize0 */
+/* values do not overlap the control buffers and corrupt long descriptors. */
 #define ENDP0_RXADDR        (0x40)
-#define ENDP0_TXADDR        (0x50)
+#define ENDP0_TXADDR        (0x80)
 
 #define ENDP1_TXADDR        (0x60)
 #define ENDP1_RXADDR        (0xA0)
@@ -71,4 +71,3 @@ void usbd_driver_init(void);
 uint8_t usbd_test(void);
 
 #endif
-
