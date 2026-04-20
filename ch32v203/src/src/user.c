@@ -189,19 +189,19 @@ uint8_t user_build_current_tlv_image(uint8_t *image, uint16_t image_size, uint16
 
     if (connected_usb_snapshot.has_manufacturer != 0u) {
         strncpy(manufacturer, connected_usb_snapshot.manufacturer, sizeof(manufacturer) - 1u);
-    } else {
+    } else if (connected_usb_snapshot.has_device == 0u) {
         (void)utf16le_desc_to_ascii(&USBD_StringDescriptor[1], manufacturer, (uint16_t)sizeof(manufacturer));
     }
 
     if (connected_usb_snapshot.has_product != 0u) {
         strncpy(product, connected_usb_snapshot.product, sizeof(product) - 1u);
-    } else {
+    } else if (connected_usb_snapshot.has_device == 0u) {
         (void)utf16le_desc_to_ascii(&USBD_StringDescriptor[2], product, (uint16_t)sizeof(product));
     }
 
     if (connected_usb_snapshot.has_serial != 0u) {
         strncpy(serial, connected_usb_snapshot.serial, sizeof(serial) - 1u);
-    } else {
+    } else if (connected_usb_snapshot.has_device == 0u) {
         (void)utf16le_desc_to_ascii(&USBD_StringDescriptor[3], serial, (uint16_t)sizeof(serial));
     }
 

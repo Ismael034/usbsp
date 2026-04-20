@@ -193,8 +193,9 @@ export default function App({ colorMode = "light", onToggleColorMode = null }) {
               vid: selection?.vid ?? prev.vid,
               pid: selection?.pid ?? prev.pid
             };
-            if (typeof selection?.manufacturer === "string") patch.manufacturer = selection.manufacturer;
-            if (typeof selection?.product === "string") patch.product = selection.product;
+            if (selection?.manufacturer !== undefined) patch.manufacturer = selection.manufacturer ?? "";
+            if (selection?.product !== undefined) patch.product = selection.product ?? "";
+            if (selection?.serial !== undefined) patch.serial = selection.serial ?? "";
             return { ...prev, ...patch };
           });
         }}
