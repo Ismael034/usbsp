@@ -29,6 +29,7 @@ import SaveAltIcon from "@mui/icons-material/SaveAlt";
 import DeleteSweepIcon from "@mui/icons-material/DeleteSweep";
 import ShowChartIcon from "@mui/icons-material/ShowChart";
 import KeyboardIcon from "@mui/icons-material/Keyboard";
+import CloseIcon from "@mui/icons-material/Close";
 import { decodeHidMouse, parseHidMouseReport } from "../lib/hidMouse.js";
 
 function parseHexBytes(hexText) {
@@ -186,10 +187,6 @@ function decodeMouse(bytes) {
   return decodeHidMouse(bytes);
 }
 
-function decodeMouse16(bytes) {
-  return decodeHidMouse(bytes, { forceWideAxes: true });
-}
-
 function decodePacket(packet, decoderMode) {
   const bytes = Array.isArray(packet.data) ? packet.data : parseHexBytes(packet.hex);
 
@@ -201,9 +198,6 @@ function decodePacket(packet, decoderMode) {
   }
   if (decoderMode === "hid-mouse") {
     return decodeMouse(bytes);
-  }
-  if (decoderMode === "hid-mouse-16") {
-    return decodeMouse16(bytes);
   }
 
   if (bytes.length === 8) {
@@ -221,7 +215,7 @@ function packetBytes(packet) {
 
 function isKeyboardPacketCandidate(packet, bytes, decoderMode) {
   if (packet.direction !== "IN" || packet.endpoint === 0) return false;
-  if (decoderMode === "hid-mouse" || decoderMode === "hid-mouse-16" || decoderMode === "none") return false;
+  if (decoderMode === "hid-mouse" || decoderMode === "none") return false;
   return bytes.length === 8;
 }
 
@@ -233,7 +227,7 @@ function isMousePacketCandidate(packet, bytes, decoderMode) {
     return false;
   }
 
-  if (decoderMode === "hid-mouse" || decoderMode === "hid-mouse-16") {
+  if (decoderMode === "hid-mouse") {
     return bytes.length >= 1 && bytes.length <= 8;
   }
 
@@ -307,7 +301,7 @@ function buildMouseTrace(packets, decoderMode) {
     const bytes = packetBytes(packet);
     if (!isMousePacketCandidate(packet, bytes, decoderMode)) continue;
 
-    const parsed = parseHidMouseReport(bytes, { forceWideAxes: decoderMode === "hid-mouse-16" });
+    const parsed = parseHidMouseReport(bytes);
     if (!parsed) continue;
 
     mousePackets += 1;
@@ -646,7 +640,6 @@ export default function CaptureTab({
                     <MenuItem value="none">None</MenuItem>
                     <MenuItem value="hid-keyboard">HID Keyboard</MenuItem>
                     <MenuItem value="hid-mouse">HID Mouse</MenuItem>
-                    <MenuItem value="hid-mouse-16">HID Mouse (16-bit XY)</MenuItem>
                   </Select>
                 </FormControl>
               </Stack>
@@ -727,15 +720,22 @@ export default function CaptureTab({
           }}
         >
           <Box component="span">Mouse Trace</Box>
-          {mouseTraceGeometry ? (
-            <Tooltip title="Save as PNG">
-              <span>
-                <IconButton size="small" onClick={() => saveMouseTracePng(mouseTraceGeometry)}>
-                  <SaveAltIcon fontSize="small" />
-                </IconButton>
-              </span>
+          <Stack direction="row" spacing={0.5}>
+            {mouseTraceGeometry ? (
+              <Tooltip title="Save as PNG">
+                <span>
+                  <IconButton size="small" onClick={() => saveMouseTracePng(mouseTraceGeometry)}>
+                    <SaveAltIcon fontSize="small" />
+                  </IconButton>
+                </span>
+              </Tooltip>
+            ) : null}
+            <Tooltip title="Close">
+              <IconButton size="small" onClick={() => setMouseTraceOpen(false)} aria-label="close mouse trace">
+                <CloseIcon fontSize="small" />
+              </IconButton>
             </Tooltip>
-          ) : null}
+          </Stack>
         </DialogTitle>
         <DialogContent dividers>
           {mouseTrace && mouseTraceGeometry ? (
@@ -768,7 +768,21 @@ export default function CaptureTab({
       </Dialog>
 
       <Dialog open={keyboardTextOpen} onClose={() => setKeyboardTextOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle>Keyboard Text</DialogTitle>
+        <DialogTitle
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 1
+          }}
+        >
+          <Box component="span">Keyboard Text</Box>
+          <Tooltip title="Close">
+            <IconButton size="small" onClick={() => setKeyboardTextOpen(false)} aria-label="close keyboard text">
+              <CloseIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </DialogTitle>
         <DialogContent dividers>
           {keyboardTextView ? (
             <Stack spacing={1.5}>

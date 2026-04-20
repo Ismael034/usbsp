@@ -7,6 +7,11 @@ function asSigned16le(low = 0, high = 0) {
   return value > 0x7fff ? value - 0x10000 : value;
 }
 
+function asSigned12(value = 0) {
+  const safeValue = value & 0x0fff;
+  return safeValue & 0x0800 ? safeValue - 0x1000 : safeValue;
+}
+
 function isSignByte(value) {
   return value === 0x00 || value === 0xff;
 }
@@ -49,7 +54,24 @@ function looksLikeWideAxesReport(body, forceWideAxes) {
   return asSigned16le(body[1], body[2]) !== 0 || asSigned16le(body[3], body[4]) !== 0;
 }
 
-export function parseHidMouseReport(bytes, { forceWideAxes = false } = {}) {
+function looksLikePacked12AxesReport(body, reportId, forcePacked12Axes) {
+  if (forcePacked12Axes) {
+    return body.length >= 4;
+  }
+
+  if (reportId == null || body.length !== 5) {
+    return false;
+  }
+
+  const wheel = asSigned8(body[4] ?? 0);
+  if (wheel !== 0) {
+    return false;
+  }
+
+  return body[4] === 0;
+}
+
+export function parseHidMouseReport(bytes, { forceWideAxes = false, forcePacked12Axes = false } = {}) {
   if (!bytes?.length) return null;
 
   const { reportId, body } = splitMouseReport(bytes);
@@ -84,6 +106,24 @@ export function parseHidMouseReport(bytes, { forceWideAxes = false } = {}) {
   if (body.length < 3) return null;
 
   const buttons = listButtons(body[0] ?? 0);
+
+  if (looksLikePacked12AxesReport(body, reportId, forcePacked12Axes)) {
+    const dx12 = asSigned12((body[1] & 0xff) | ((body[2] & 0x0f) << 8));
+    const dy12 = asSigned12(((body[2] >> 4) & 0x0f) | ((body[3] & 0xff) << 4));
+    const wheel12 = asSigned8(body[4] ?? 0);
+    const pan12 = asSigned8(body[5] ?? 0);
+
+    return {
+      reportId,
+      buttons,
+      dx: dx12,
+      dy: dy12,
+      wheel: wheel12,
+      pan: pan12,
+      format: "xy-12-packed",
+      idle: buttons.length === 0 && dx12 === 0 && dy12 === 0 && wheel12 === 0 && pan12 === 0
+    };
+  }
 
   if (looksLikeWideAxesReport(body, forceWideAxes)) {
     const dx16 = asSigned16le(body[1], body[2]);
@@ -134,8 +174,8 @@ export function parseHidMouseReport(bytes, { forceWideAxes = false } = {}) {
   };
 }
 
-export function decodeHidMouse(bytes, { forceWideAxes = false } = {}) {
-  const parsed = parseHidMouseReport(bytes, { forceWideAxes });
+export function decodeHidMouse(bytes, { forceWideAxes = false, forcePacked12Axes = false } = {}) {
+  const parsed = parseHidMouseReport(bytes, { forceWideAxes, forcePacked12Axes });
   if (!parsed) return bytes?.length ? "Not a boot-mouse report" : "";
 
   if (parsed.format === "delta") {
