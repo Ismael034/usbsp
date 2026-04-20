@@ -19,4 +19,3 @@ export const TLV_SERIAL = 0x0a;
 export const FLAG_SELF_POWERED = 1 << 0;
 export const FLAG_REMOTE_WAKEUP = 1 << 1;
 export const FLAG_BOOT_CONNECTED = 1 << 2;
-export const FLAG_CAPTURE_ON_BOOT = 1 << 3;

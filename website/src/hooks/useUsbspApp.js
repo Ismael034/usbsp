@@ -5,7 +5,6 @@ import {
   EP_IN,
   EP_OUT,
   FLAG_BOOT_CONNECTED,
-  FLAG_CAPTURE_ON_BOOT,
   FLAG_REMOTE_WAKEUP,
   FLAG_SELF_POWERED,
   IFACE,
@@ -95,7 +94,6 @@ function normalizeConfig(config) {
     remoteWakeup: !!config.remoteWakeup,
     bootConnected: !!config.bootConnected,
     attachDelayMs: clampInt(config.attachDelayMs, 0, 60000, 0),
-    captureEnabledOnBoot: !!config.captureEnabledOnBoot,
     captureMaxBytes: clampInt(config.captureMaxBytes, 0, 512, 64)
   };
 }
@@ -308,7 +306,6 @@ export function useUsbspApp({ log, notify, reportError }) {
     remoteWakeup: false,
     bootConnected: true,
     attachDelayMs: 0,
-    captureEnabledOnBoot: true,
     captureMaxBytes: 64
   });
   const [versions, setVersions] = useState({ ch572d: null, ch32v203: null });
@@ -454,7 +451,6 @@ export function useUsbspApp({ log, notify, reportError }) {
         remoteWakeup: flags != null ? (flags & FLAG_REMOTE_WAKEUP) !== 0 : false,
         bootConnected: flags != null ? (flags & FLAG_BOOT_CONNECTED) !== 0 : true,
         attachDelayMs: u16(TLV_ATTACH_DELAY_MS) != null ? u16(TLV_ATTACH_DELAY_MS) : 0,
-        captureEnabledOnBoot: flags != null ? (flags & FLAG_CAPTURE_ON_BOOT) !== 0 : true,
         captureMaxBytes: u16(TLV_CAPTURE_MAX_BYTES) != null ? u16(TLV_CAPTURE_MAX_BYTES) : 64
       }
     };
@@ -734,8 +730,7 @@ export function useUsbspApp({ log, notify, reportError }) {
         const flags =
           (nextConfig.selfPowered ? FLAG_SELF_POWERED : 0) |
           (nextConfig.remoteWakeup ? FLAG_REMOTE_WAKEUP : 0) |
-          (nextConfig.bootConnected ? FLAG_BOOT_CONNECTED : 0) |
-          (nextConfig.captureEnabledOnBoot ? FLAG_CAPTURE_ON_BOOT : 0);
+          (nextConfig.bootConnected ? FLAG_BOOT_CONNECTED : 0);
 
         tlvs.push(encodeTlv(TLV_MAX_POWER_MA, u16leBytes(nextConfig.maxPowerMa)));
         tlvs.push(encodeTlv(TLV_FLAGS, new Uint8Array([flags & 0xff])));

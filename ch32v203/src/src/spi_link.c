@@ -220,10 +220,6 @@ void spi_link_capture_packet(uint8_t direction_in, uint8_t endpoint, uint8_t end
     uint16_t rec_len;
     uint8_t meta;
 
-    if ((eeprom_usb_info.has_flags != 0u) && ((eeprom_usb_info.flags & EEPROM_FLAG_CAPTURE_ON_BOOT) == 0u)) {
-        return;
-    }
-
     if (endpoint >= 0x80U) {
         endpoint &= 0x7FU;
     }

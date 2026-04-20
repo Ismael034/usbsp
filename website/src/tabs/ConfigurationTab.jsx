@@ -15,8 +15,8 @@ import {
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import MemoryIcon from "@mui/icons-material/Memory";
-import DownloadIcon from "@mui/icons-material/Download";
-import SendIcon from "@mui/icons-material/Send";
+import FileDownloadIcon from "@mui/icons-material/FileDownload";
+import SaveIcon from "@mui/icons-material/Save";
 import SearchIcon from "@mui/icons-material/Search";
 import UsbIcon from "@mui/icons-material/Usb";
 
@@ -187,17 +187,13 @@ export default function ConfigurationTab({
                 control={<Switch checked={config.bootConnected} onChange={(e) => setConfig((prev) => ({ ...prev, bootConnected: e.target.checked }))} />}
                 label="Boot connected"
               />
-              <FormControlLabel
-                control={<Switch checked={config.captureEnabledOnBoot} onChange={(e) => setConfig((prev) => ({ ...prev, captureEnabledOnBoot: e.target.checked }))} />}
-                label="Capture on boot"
-              />
             </Stack>
 
             <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
-              <Button variant="outlined" startIcon={<DownloadIcon />} onClick={onReadFromDevice} disabled={disableActions}>
+              <Button variant="outlined" startIcon={<FileDownloadIcon />} onClick={onReadFromDevice} disabled={disableActions}>
                 Load
               </Button>
-              <Button variant="contained" startIcon={<SendIcon />} onClick={onWriteToDevice} disabled={disableActions}>
+              <Button variant="contained" startIcon={<SaveIcon />} onClick={onWriteToDevice} disabled={disableActions}>
                 Save
               </Button>
             </Stack>

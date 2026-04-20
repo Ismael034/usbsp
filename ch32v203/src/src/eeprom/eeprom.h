@@ -14,7 +14,6 @@
 #define EEPROM_FLAG_SELF_POWERED    (1u << 0)
 #define EEPROM_FLAG_REMOTE_WAKEUP   (1u << 1)
 #define EEPROM_FLAG_BOOT_CONNECTED  (1u << 2)
-#define EEPROM_FLAG_CAPTURE_ON_BOOT (1u << 3)
 
 typedef struct
 {

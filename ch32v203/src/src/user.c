@@ -23,7 +23,6 @@ static volatile uint8_t reset_requested = 0;
 #define TLV_FLAG_SELF_POWERED    (1u << 0)
 #define TLV_FLAG_REMOTE_WAKEUP   (1u << 1)
 #define TLV_FLAG_BOOT_CONNECTED  (1u << 2)
-#define TLV_FLAG_CAPTURE_ON_BOOT (1u << 3)
 
 #define TLV_TEXT_MAX_LEN         60u
 
@@ -148,7 +147,7 @@ uint8_t user_build_current_tlv_image(uint8_t *image, uint16_t image_size, uint16
     uint16_t local_max_power_ma = 100u;
     uint16_t attach_delay_ms = eeprom_usb_info.has_attach_delay_ms ? eeprom_usb_info.attach_delay_ms : 0u;
     uint16_t local_capture_max_bytes = capture_max_bytes;
-    uint8_t flags = eeprom_usb_info.has_flags ? eeprom_usb_info.flags : (uint8_t)(TLV_FLAG_BOOT_CONNECTED | TLV_FLAG_CAPTURE_ON_BOOT);
+    uint8_t flags = eeprom_usb_info.has_flags ? eeprom_usb_info.flags : TLV_FLAG_BOOT_CONNECTED;
     char manufacturer[TLV_TEXT_MAX_LEN + 1];
     char product[TLV_TEXT_MAX_LEN + 1];
     char serial[TLV_TEXT_MAX_LEN + 1];

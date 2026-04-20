@@ -27,7 +27,7 @@ eeprom_usb_info_t eeprom_usb_info;
 
 static uint8_t effective_flags_from_info(const eeprom_usb_info_t *info)
 {
-    return (info && info->has_flags) ? info->flags : (uint8_t)(EEPROM_FLAG_BOOT_CONNECTED | EEPROM_FLAG_CAPTURE_ON_BOOT);
+    return (info && info->has_flags) ? info->flags : EEPROM_FLAG_BOOT_CONNECTED;
 }
 
 static void set_default_langid_descriptor(void)
@@ -239,11 +239,10 @@ static void log_parsed_eeprom_tlv(const eeprom_usb_info_t *info)
     if (info->has_max_power_ma) LOG_INFO("eeprom: maxPowerMa=%u", info->max_power_ma);
     if (info->has_flags) {
         LOG_INFO("eeprom: flags=0x%02X", info->flags);
-        LOG_INFO("eeprom: selfPowered=%u remoteWakeup=%u bootConnected=%u captureOnBoot=%u",
+        LOG_INFO("eeprom: selfPowered=%u remoteWakeup=%u bootConnected=%u",
                  (info->flags & EEPROM_FLAG_SELF_POWERED) ? 1u : 0u,
                  (info->flags & EEPROM_FLAG_REMOTE_WAKEUP) ? 1u : 0u,
-                 (info->flags & EEPROM_FLAG_BOOT_CONNECTED) ? 1u : 0u,
-                 (info->flags & EEPROM_FLAG_CAPTURE_ON_BOOT) ? 1u : 0u);
+                 (info->flags & EEPROM_FLAG_BOOT_CONNECTED) ? 1u : 0u);
     }
     if (info->has_attach_delay_ms) LOG_INFO("eeprom: attachDelayMs=%u", info->attach_delay_ms);
     if (info->has_capture_max_bytes) LOG_INFO("eeprom: captureMaxBytes=%u", info->capture_max_bytes);
