@@ -144,6 +144,7 @@ export default function App({ colorMode = "light", onToggleColorMode = null }) {
             {tab === 1 && (
               <CaptureTab
                 captureRunning={app.captureRunning}
+                captureDroppedTotal={app.captureDroppedTotal}
                 packets={app.packets}
                 disableActions={app.disableActions}
                 busy={app.busy}

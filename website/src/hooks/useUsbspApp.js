@@ -316,6 +316,7 @@ export function useUsbspApp({ log, notify, reportError }) {
   const [raw, setRaw] = useState("");
   const [captureRunning, setCaptureRunning] = useState(false);
   const [packets, setPackets] = useState([]);
+  const [captureDroppedTotal, setCaptureDroppedTotal] = useState(0);
   const [eepromReadResult, setEepromReadResult] = useState("");
   const [rawResponse, setRawResponse] = useState("");
   const [spiResponse, setSpiResponse] = useState("");
@@ -695,6 +696,7 @@ export function useUsbspApp({ log, notify, reportError }) {
         setVersions({ ch572d: null, ch32v203: null });
         capturePendingPacketsRef.current = [];
         capturePendingDroppedRef.current = 0;
+        setCaptureDroppedTotal(0);
         log("Disconnected");
         notify("info", "Disconnected.");
       }
@@ -901,6 +903,7 @@ export function useUsbspApp({ log, notify, reportError }) {
     captureLastFlushMsRef.current = 0;
     captureLastDropLogMsRef.current = 0;
     setPackets([]);
+    setCaptureDroppedTotal(0);
   }, []);
 
   const drainCaptureBacklog = useCallback(async () => {
@@ -953,6 +956,7 @@ export function useUsbspApp({ log, notify, reportError }) {
     captureLastFlushMsRef.current = 0;
     captureLastDropLogMsRef.current = 0;
     setPackets([]);
+    setCaptureDroppedTotal(0);
 
     try {
       await drainCaptureBacklog();
@@ -960,6 +964,7 @@ export function useUsbspApp({ log, notify, reportError }) {
       capturePendingPacketsRef.current = [];
       capturePendingDroppedRef.current = 0;
       setPackets([]);
+      setCaptureDroppedTotal(0);
       captureLoopRef.current = true;
       setCaptureRunning(true);
       log("CAPTURE: started");
@@ -973,6 +978,7 @@ export function useUsbspApp({ log, notify, reportError }) {
         const decoded = decodeCaptureFrame(frame, packetIndexRef);
         if (decoded.dropped) {
           capturePendingDroppedRef.current += decoded.dropped;
+          setCaptureDroppedTotal((prev) => prev + decoded.dropped);
           flushDroppedCaptureLog(false);
         }
         if (decoded.packets.length) {
@@ -1028,6 +1034,7 @@ export function useUsbspApp({ log, notify, reportError }) {
   return {
     busy,
     captureRunning,
+    captureDroppedTotal,
     config,
     connected,
     disableActions: busy || !connected || captureRunning,

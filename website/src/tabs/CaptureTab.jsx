@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
+  Alert,
   Box,
   Button,
   Card,
@@ -499,6 +500,7 @@ function MouseTraceGraphic({ geometry, height = { xs: 220, md: 260 } }) {
 
 export default function CaptureTab({
   captureRunning,
+  captureDroppedTotal = 0,
   packets,
   disableActions,
   busy,
@@ -644,6 +646,12 @@ export default function CaptureTab({
                 </FormControl>
               </Stack>
             </Stack>
+
+            {captureDroppedTotal > 0 ? (
+              <Alert severity="warning" variant="outlined">
+                {captureDroppedTotal} packet{captureDroppedTotal === 1 ? "" : "s"} dropped during this capture.
+              </Alert>
+            ) : null}
 
             <Box
               sx={{
