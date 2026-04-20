@@ -117,8 +117,8 @@ export default function App({ colorMode = "light", onToggleColorMode = null }) {
 
         <Card variant="outlined" sx={{ overflow: "hidden" }}>
           <CardHeader
-            title="Device Control"
-            subheader="Configure your device and capture USB traffic"
+            title="USBsp Control Panel"
+            subheader="Configure your device and redirect USB traffic"
           />
           <CardContent sx={{ pt: 0 }}>
             <Tabs value={tab} onChange={handleTabChange} variant="scrollable" allowScrollButtonsMobile>
