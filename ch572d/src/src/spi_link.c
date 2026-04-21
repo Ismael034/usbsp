@@ -5,6 +5,8 @@
 #define SPI_CMD_PINGPONG 0x03U
 #define SPI_CMD_GET_VERSIONS 0x10U
 #define SPI_CMD_CAPTURE_POLL 0x20U
+#define SPI_CLK_FAST_DIV 2U
+#define SPI_CLK_CAPTURE_DIV 16U
 
 __attribute__((aligned(4))) static uint8_t spi_ping_req[SPI_LINK_FRAME_LEN];
 __attribute__((aligned(4))) static uint8_t spi_versions_req[SPI_LINK_FRAME_LEN];
@@ -43,7 +45,7 @@ void spi_link_init(void)
     GPIOA_ModeCfg(GPIO_Pin_6, GPIO_ModeIN_Floating);
     SPI_MasterDefInit();
     SPI_DataMode(Mode0_HighBitINFront);
-    SPI_CLKCfg(2);
+    SPI_CLKCfg(SPI_CLK_FAST_DIV);
 }
 
 void spi_link_send_test(void)
@@ -122,5 +124,7 @@ void spi_link_capture_read(uint8_t *rx, uint8_t len)
     }
 
     memset(rx, 0, rx_len);
-    spi_link_exchange(spi_capture_req, rx, rx_len, 10);
+    SPI_CLKCfg(SPI_CLK_CAPTURE_DIV);
+    spi_link_exchange(spi_capture_req, rx, rx_len, 1000);
+    SPI_CLKCfg(SPI_CLK_FAST_DIV);
 }
