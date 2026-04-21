@@ -20,6 +20,7 @@ import {
   TableBody,
   TableCell,
   TableHead,
+  TablePagination,
   TableRow,
   Tooltip,
   Typography
@@ -40,6 +41,12 @@ function parseHexBytes(hexText) {
     .filter(Boolean)
     .map((part) => Number.parseInt(part, 16))
     .filter((value) => Number.isFinite(value) && value >= 0 && value <= 255);
+}
+
+function packetLengthLabel(packet) {
+  const original = packet.originalLength ?? packet.length ?? 0;
+  const captured = packet.capturedLength ?? packet.data?.length ?? original;
+  return captured < original ? `${captured} / ${original}` : `${original}`;
 }
 
 const KEYBOARD_MODIFIER_MAP = [
@@ -201,12 +208,6 @@ function decodePacket(packet, decoderMode) {
     return decodeMouse(bytes);
   }
 
-  if (bytes.length === 8) {
-    return decodeKeyboard(bytes);
-  }
-  if (bytes.length >= 1 && bytes.length <= 8 && packet.direction === "IN" && packet.endpoint !== 0) {
-    return decodeMouse(bytes);
-  }
   return packet.summary || "Raw USB packet";
 }
 
@@ -232,7 +233,7 @@ function isMousePacketCandidate(packet, bytes, decoderMode) {
     return bytes.length >= 1 && bytes.length <= 8;
   }
 
-  return bytes.length >= 1 && bytes.length <= 8 && bytes.length !== 8;
+  return false;
 }
 
 function buildKeyboardTextView(packets, decoderMode) {
@@ -511,25 +512,32 @@ export default function CaptureTab({
   onSaveCapture
 }) {
   const cardSx = { overflow: "hidden" };
-  const [decoderMode, setDecoderMode] = useState("auto");
+  const [decoderMode, setDecoderMode] = useState("none");
   const [mouseTraceOpen, setMouseTraceOpen] = useState(false);
   const [keyboardTextOpen, setKeyboardTextOpen] = useState(false);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(100);
 
-  const renderedPackets = useMemo(
-    () =>
-      [...packets]
-        .slice(-200)
-        .reverse()
-        .map((packet) => ({
+  const orderedPackets = useMemo(() => [...packets].reverse(), [packets]);
+
+  const renderedPackets = useMemo(() => {
+    const start = page * rowsPerPage;
+    return orderedPackets.slice(start, start + rowsPerPage).map((packet) => ({
         ...packet,
         decoded: decodePacket(packet, decoderMode)
-      })),
-    [decoderMode, packets]
-  );
+      }));
+  }, [decoderMode, orderedPackets, page, rowsPerPage]);
 
   const mouseTrace = useMemo(() => buildMouseTrace(packets, decoderMode), [decoderMode, packets]);
   const mouseTraceGeometry = useMemo(() => buildTraceGeometry(mouseTrace), [mouseTrace]);
   const keyboardTextView = useMemo(() => buildKeyboardTextView(packets, decoderMode), [decoderMode, packets]);
+
+  useEffect(() => {
+    const maxPage = Math.max(0, Math.ceil(orderedPackets.length / rowsPerPage) - 1);
+    if (page > maxPage) {
+      setPage(maxPage);
+    }
+  }, [orderedPackets.length, page, rowsPerPage]);
 
   useEffect(() => {
     if (captureRunning || !mouseTrace) {
@@ -634,15 +642,14 @@ export default function CaptureTab({
                   <InputLabel id="capture-decoder-label">Decoder</InputLabel>
                   <Select
                     labelId="capture-decoder-label"
-                    value={decoderMode}
-                    label="Decoder"
-                    onChange={(event) => setDecoderMode(event.target.value)}
-                  >
-                    <MenuItem value="auto">Auto</MenuItem>
-                    <MenuItem value="none">None</MenuItem>
-                    <MenuItem value="hid-keyboard">HID Keyboard</MenuItem>
-                    <MenuItem value="hid-mouse">HID Mouse</MenuItem>
-                  </Select>
+                  value={decoderMode}
+                  label="Decoder"
+                  onChange={(event) => setDecoderMode(event.target.value)}
+                >
+                  <MenuItem value="none">None</MenuItem>
+                  <MenuItem value="hid-keyboard">HID Keyboard</MenuItem>
+                  <MenuItem value="hid-mouse">HID Mouse</MenuItem>
+                </Select>
                 </FormControl>
               </Stack>
             </Stack>
@@ -694,7 +701,9 @@ export default function CaptureTab({
                           <TableCell sx={{ whiteSpace: "nowrap", verticalAlign: "top" }}>{packet.seq}</TableCell>
                           <TableCell sx={{ whiteSpace: "nowrap", verticalAlign: "top" }}>{packet.direction}</TableCell>
                           <TableCell sx={{ whiteSpace: "nowrap", verticalAlign: "top" }}>{packet.endpoint}</TableCell>
-                          <TableCell sx={{ whiteSpace: "nowrap", verticalAlign: "top" }}>{packet.length}</TableCell>
+                          <TableCell sx={{ whiteSpace: "nowrap", verticalAlign: "top" }}>
+                            {packetLengthLabel(packet)}
+                          </TableCell>
                           <TableCell sx={{ verticalAlign: "top", overflowWrap: "anywhere" }}>{packet.decoded}</TableCell>
                           <TableCell
                             sx={{
@@ -713,6 +722,18 @@ export default function CaptureTab({
                   </TableBody>
                 </Table>
               </Box>
+              <TablePagination
+                component="div"
+                count={orderedPackets.length}
+                page={page}
+                onPageChange={(_event, nextPage) => setPage(nextPage)}
+                rowsPerPage={rowsPerPage}
+                onRowsPerPageChange={(event) => {
+                  setRowsPerPage(Number(event.target.value));
+                  setPage(0);
+                }}
+                rowsPerPageOptions={[50, 100, 250, 500]}
+              />
             </Box>
           </Stack>
         </CardContent>
