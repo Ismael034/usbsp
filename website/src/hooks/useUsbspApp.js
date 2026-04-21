@@ -21,7 +21,6 @@ import {
   TLV_VID,
   VID
 } from "../lib/usbsp/constants.js";
-import { decodeHidMouse } from "../lib/hidMouse.js";
 import { encodeTlv, packTlvs, parseTlvStore, u16leBytes } from "../lib/usbsp/tlv.js";
 import { clampInt, hex4, parseHexInput, sanitizeHex4Input, validateRawHexInput } from "../lib/usbsp/utils.js";
 import { transferRawWithTimeout } from "../lib/usbsp/webusb.js";
@@ -102,79 +101,6 @@ function bytesToHex(bytes) {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join(" ");
 }
 
-function summarizeHidKeyboard(bytes) {
-  if (!bytes?.length || bytes.length < 8) return "";
-
-  const modifierMap = [
-    "Left Ctrl",
-    "Left Shift",
-    "Left Alt",
-    "Left Meta",
-    "Right Ctrl",
-    "Right Shift",
-    "Right Alt",
-    "Right Meta"
-  ];
-  const keyMap = {
-    0x04: "A",
-    0x05: "B",
-    0x06: "C",
-    0x07: "D",
-    0x08: "E",
-    0x09: "F",
-    0x0a: "G",
-    0x0b: "H",
-    0x0c: "I",
-    0x0d: "J",
-    0x0e: "K",
-    0x0f: "L",
-    0x10: "M",
-    0x11: "N",
-    0x12: "O",
-    0x13: "P",
-    0x14: "Q",
-    0x15: "R",
-    0x16: "S",
-    0x17: "T",
-    0x18: "U",
-    0x19: "V",
-    0x1a: "W",
-    0x1b: "X",
-    0x1c: "Y",
-    0x1d: "Z",
-    0x1e: "1",
-    0x1f: "2",
-    0x20: "3",
-    0x21: "4",
-    0x22: "5",
-    0x23: "6",
-    0x24: "7",
-    0x25: "8",
-    0x26: "9",
-    0x27: "0",
-    0x28: "Enter",
-    0x29: "Escape",
-    0x2a: "Backspace",
-    0x2b: "Tab",
-    0x2c: "Space"
-  };
-
-  const modifiers = [];
-  for (let bit = 0; bit < 8; bit += 1) {
-    if (bytes[0] & (1 << bit)) modifiers.push(modifierMap[bit]);
-  }
-  const keys = Array.from(bytes.slice(2, 8))
-    .filter((value) => value !== 0)
-    .map((value) => keyMap[value] ?? `0x${value.toString(16).padStart(2, "0")}`);
-
-  const items = [...modifiers, ...keys];
-  return items.length ? `Keyboard: ${items.join(", ")}` : "-";
-}
-
-function summarizeHidMouse(bytes) {
-  return decodeHidMouse(bytes);
-}
-
 function trimTrailingZeroes(bytes) {
   let end = bytes.length;
   while (end > 0 && bytes[end - 1] === 0) {
@@ -184,17 +110,6 @@ function trimTrailingZeroes(bytes) {
 }
 
 function summarizePayload(direction, endpoint, payload) {
-  if (direction === "IN" && endpoint === 1 && payload.length === 8) {
-    return summarizeHidKeyboard(payload);
-  }
-  if (direction === "IN" && endpoint !== 0 && payload.length >= 1 && payload.length <= 8) {
-    if (payload.length === 8) return summarizeHidKeyboard(payload);
-    return summarizeHidMouse(payload);
-  }
-  if (payload.length === 8) {
-    const hid = summarizeHidKeyboard(payload);
-    if (hid) return hid;
-  }
   return payload.length ? "Raw USB packet" : "-";
 }
 
@@ -232,15 +147,23 @@ function decodeCaptureFrame(frame, packetIndexRef) {
   const count = payload[3] ?? 0;
   const packets = [];
   let cursor = 4;
+  let malformed = false;
 
   for (let index = 0; index < count; index += 1) {
-    if (cursor + 2 > payload.length) break;
+    if (cursor + 3 > payload.length) {
+      malformed = true;
+      break;
+    }
 
     const meta = payload[cursor];
-    const length = payload[cursor + 1];
-    if (length > 58 || cursor + 2 + length > payload.length) break;
+    const capturedLength = payload[cursor + 1];
+    const originalLength = payload[cursor + 2];
+    if (capturedLength > 57 || cursor + 3 + capturedLength > payload.length) {
+      malformed = true;
+      break;
+    }
 
-    const packetData = payload.slice(cursor + 2, cursor + 2 + length);
+    const packetData = payload.slice(cursor + 3, cursor + 3 + capturedLength);
     const nextIndex = packetIndexRef.current + 1;
     packetIndexRef.current = nextIndex;
     const direction = (meta & 0x80) !== 0 ? "IN" : "OUT";
@@ -251,13 +174,40 @@ function decodeCaptureFrame(frame, packetIndexRef) {
       seq,
       direction,
       endpoint,
-      length,
+      length: Math.max(originalLength, capturedLength),
+      capturedLength,
+      originalLength: Math.max(originalLength, capturedLength),
+      truncated: capturedLength < originalLength,
       summary: summarizePayload(direction, endpoint, packetData),
       hex: bytesToHex(packetData),
       data: Array.from(packetData)
     });
 
-    cursor += 2 + length;
+    cursor += 3 + capturedLength;
+  }
+
+  if (packets.length === 0 && (count > 0 || malformed)) {
+    const nextIndex = packetIndexRef.current + 1;
+    packetIndexRef.current = nextIndex;
+    const trimmed = trimTrailingZeroes(payload.slice(4));
+    return {
+      dropped,
+      packets: [
+        {
+          id: nextIndex,
+          seq,
+          direction: "?",
+          endpoint: "-",
+          length: trimmed.length,
+          capturedLength: trimmed.length,
+          originalLength: trimmed.length,
+          truncated: false,
+          summary: malformed ? "Malformed capture frame" : "Raw capture frame",
+          hex: bytesToHex(trimmed),
+          data: Array.from(trimmed)
+        }
+      ]
+    };
   }
 
   return { packets, dropped };
