@@ -15,11 +15,13 @@
 #define SPI_CAPTURE_MAGIC 0xC2U
 #define SPI_USB_INFO_MAGIC 0x83U
 #define SPI_USB_INFO_HEADER_LEN 6U
-#define SPI_CAPTURE_PAYLOAD_INT_MAX 18U
+#define SPI_CAPTURE_RECORD_HEADER_LEN 3U
+#define SPI_CAPTURE_PAYLOAD_MAX (SPI_LINK_FRAME_LEN - 4U - SPI_CAPTURE_RECORD_HEADER_LEN)
+#define SPI_CAPTURE_PAYLOAD_INT_MAX SPI_CAPTURE_PAYLOAD_MAX
 #define SPI_CAPTURE_PAYLOAD_INT_MIN 8U
-#define SPI_CAPTURE_PAYLOAD_OTHER_MAX 12U
+#define SPI_CAPTURE_PAYLOAD_OTHER_MAX SPI_CAPTURE_PAYLOAD_MAX
 #define SPI_CAPTURE_PAYLOAD_OTHER_MIN 4U
-#define SPI_CAPTURE_PAYLOAD_BULK_MAX 8U
+#define SPI_CAPTURE_PAYLOAD_BULK_MAX SPI_CAPTURE_PAYLOAD_MAX
 #define SPI_CAPTURE_PAYLOAD_BULK_MID 4U
 #define SPI_CAPTURE_PAYLOAD_BULK_MIN 0U
 #define SPI_CAPTURE_RING_SIZE 1024U
@@ -130,6 +132,7 @@ static void spi_link_prepare_capture_reply(void)
     uint8_t dropped_report = (dropped > 0xFFU) ? 0xFFU : (uint8_t)dropped;
     uint8_t meta;
     uint8_t len;
+    uint8_t original_len;
     uint16_t rec_len;
 
     memset((void *)spi_tx_buf, 0, sizeof(spi_tx_buf));
@@ -143,10 +146,11 @@ static void spi_link_prepare_capture_reply(void)
     spi_tx_buf[2] = dropped_report;
     spi_capture_dropped = (uint16_t)(dropped - dropped_report);
 
-    while (local_used >= 2U) {
+    while (local_used >= SPI_CAPTURE_RECORD_HEADER_LEN) {
         meta = spi_capture_ring[local_head];
         len = spi_capture_ring[(uint16_t)((local_head + 1U) % SPI_CAPTURE_RING_SIZE)];
-        rec_len = (uint16_t)(2U + len);
+        original_len = spi_capture_ring[(uint16_t)((local_head + 2U) % SPI_CAPTURE_RING_SIZE)];
+        rec_len = (uint16_t)(SPI_CAPTURE_RECORD_HEADER_LEN + len);
 
         if (local_used < rec_len) {
             break;
@@ -158,8 +162,9 @@ static void spi_link_prepare_capture_reply(void)
 
         spi_tx_buf[out_index++] = meta;
         spi_tx_buf[out_index++] = len;
+        spi_tx_buf[out_index++] = original_len;
         for (uint8_t i = 0U; i < len; i++) {
-            uint16_t src = (uint16_t)((local_head + 2U + i) % SPI_CAPTURE_RING_SIZE);
+            uint16_t src = (uint16_t)((local_head + SPI_CAPTURE_RECORD_HEADER_LEN + i) % SPI_CAPTURE_RING_SIZE);
             spi_tx_buf[out_index++] = spi_capture_ring[src];
         }
 
@@ -217,6 +222,7 @@ static uint8_t spi_link_capture_limit(uint8_t endpoint_type, uint16_t len, uint1
 void spi_link_capture_packet(uint8_t direction_in, uint8_t endpoint, uint8_t endpoint_type, const uint8_t *data, uint16_t len)
 {
     uint8_t copy_len;
+    uint8_t original_len;
     uint16_t rec_len;
     uint8_t meta;
 
@@ -227,7 +233,8 @@ void spi_link_capture_packet(uint8_t direction_in, uint8_t endpoint, uint8_t end
     __disable_irq();
 
     copy_len = spi_link_capture_limit(endpoint_type, len, spi_capture_used);
-    rec_len = (uint16_t)(2U + copy_len);
+    original_len = (len > 0xFFU) ? 0xFFU : (uint8_t)len;
+    rec_len = (uint16_t)(SPI_CAPTURE_RECORD_HEADER_LEN + copy_len);
     meta = (uint8_t)((direction_in != 0U ? 0x80U : 0x00U) | (endpoint & 0x7FU));
 
     if ((uint16_t)(SPI_CAPTURE_RING_SIZE - spi_capture_used) < rec_len) {
@@ -239,6 +246,8 @@ void spi_link_capture_packet(uint8_t direction_in, uint8_t endpoint, uint8_t end
     spi_capture_ring[spi_capture_tail] = meta;
     spi_capture_tail = (uint16_t)((spi_capture_tail + 1U) % SPI_CAPTURE_RING_SIZE);
     spi_capture_ring[spi_capture_tail] = copy_len;
+    spi_capture_tail = (uint16_t)((spi_capture_tail + 1U) % SPI_CAPTURE_RING_SIZE);
+    spi_capture_ring[spi_capture_tail] = original_len;
     spi_capture_tail = (uint16_t)((spi_capture_tail + 1U) % SPI_CAPTURE_RING_SIZE);
 
     for (uint8_t i = 0U; i < copy_len; i++) {
