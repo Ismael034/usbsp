@@ -54,6 +54,41 @@ static uint16_t pma_alloc(uint16_t *next_addr, uint16_t size)
     return aligned;
 }
 
+static uint8_t descriptor_has_later_in_endpoint(uint8_t *ptr, uint8_t *end)
+{
+    while (ptr + 1 < end)
+    {
+        uint8_t length = ptr[0];
+        uint8_t descriptor_type = ptr[1];
+
+        if (length < 2 || ptr + length > end)
+        {
+            break;
+        }
+
+        if (descriptor_type == USB_DESCRIPTOR_TYPE_ENDPOINT)
+        {
+            USB_EndpointDescriptor *endpoint = (USB_EndpointDescriptor *)ptr;
+            if ((endpoint->bEndpointAddress & 0x80u) != 0u)
+            {
+                return 1u;
+            }
+        }
+
+        ptr += length;
+    }
+
+    return 0u;
+}
+
+static uint8_t pma_has_room_for_two(uint16_t next_addr, uint16_t size)
+{
+    uint16_t aligned = pma_align2(next_addr);
+    uint16_t alloc_size = pma_align2(size);
+
+    return ((uint16_t)(aligned + alloc_size + alloc_size) <= PMA_END_ADDR) ? 1u : 0u;
+}
+
 static void init_control_ep0_config(ep_config *cfg)
 {
     cfg->ep_num = 0;
@@ -241,6 +276,14 @@ void usbh_configure_endpoints(uint8_t *common_buffer)
             }
             else
             {
+                if (descriptor_has_later_in_endpoint(ptr + length, end) != 0u &&
+                    pma_has_room_for_two(next_pma, max_packet_size) == 0u)
+                {
+                    LOG_WARN("usbh: no PMA for OUT ep%u size=%u (reserved for IN)", ep_num, max_packet_size);
+                    ptr += length;
+                    continue;
+                }
+
                 uint16_t rx_addr = pma_alloc(&next_pma, max_packet_size);
                 if (rx_addr == 0u)
                 {
