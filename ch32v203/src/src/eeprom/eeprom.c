@@ -8,7 +8,6 @@
 
 uint16_t vid = 0;
 uint16_t pid = 0;
-uint16_t capture_max_bytes = 64u;
 eeprom_usb_info_t eeprom_usb_info;
 
 #define EEPROM_TOTAL_SIZE        256u
@@ -18,7 +17,6 @@ eeprom_usb_info_t eeprom_usb_info;
 #define TLV_TYPE_MAX_POWER_MA    0x04u
 #define TLV_TYPE_FLAGS           0x05u
 #define TLV_TYPE_ATTACH_DELAY_MS 0x06u
-#define TLV_TYPE_CAPTURE_MAX_B   0x07u
 #define TLV_TYPE_MANUFACTURER    0x08u
 #define TLV_TYPE_PRODUCT         0x09u
 #define TLV_TYPE_SERIAL          0x0Au
@@ -190,13 +188,6 @@ static uint8_t eeprom_parse_tlv(const uint8_t *raw, uint16_t raw_len, eeprom_usb
                     seen_known_field = 1;
                 }
                 break;
-            case TLV_TYPE_CAPTURE_MAX_B:
-                if (length >= 2u) {
-                    info->capture_max_bytes = tlv_u16_le(value);
-                    info->has_capture_max_bytes = 1;
-                    seen_known_field = 1;
-                }
-                break;
             case TLV_TYPE_MANUFACTURER:
                 tlv_copy_text(info->manufacturer, (uint16_t)sizeof(info->manufacturer), value, (uint16_t)length);
                 info->has_manufacturer = 1;
@@ -245,7 +236,6 @@ static void log_parsed_eeprom_tlv(const eeprom_usb_info_t *info)
                  (info->flags & EEPROM_FLAG_BOOT_CONNECTED) ? 1u : 0u);
     }
     if (info->has_attach_delay_ms) LOG_INFO("eeprom: attachDelayMs=%u", info->attach_delay_ms);
-    if (info->has_capture_max_bytes) LOG_INFO("eeprom: captureMaxBytes=%u", info->capture_max_bytes);
     if (info->has_manufacturer) LOG_INFO("eeprom: manufacturer=\"%s\"", info->manufacturer);
     if (info->has_product) LOG_INFO("eeprom: product=\"%s\"", info->product);
     if (info->has_serial) LOG_INFO("eeprom: serial=\"%s\"", info->serial);
@@ -496,9 +486,7 @@ void AT24C02_read_usb_info()
         eeprom_usb_info = info;
         vid = info.has_vid ? info.vid : 0;
         pid = info.has_pid ? info.pid : 0;
-        capture_max_bytes = info.has_capture_max_bytes ? info.capture_max_bytes : 64u;
         LOG_INFO("eeprom: effective VID=0x%04X PID=0x%04X", vid, pid);
-        LOG_INFO("eeprom: effective captureMaxBytes=%u", capture_max_bytes);
         return;
     }
 
@@ -506,16 +494,12 @@ void AT24C02_read_usb_info()
     memset(&eeprom_usb_info, 0, sizeof(eeprom_usb_info));
     vid = ((uint16_t)raw[EEPROM_ADDR_DIV] << 8) | raw[EEPROM_ADDR_DIV + 1];
     pid = ((uint16_t)raw[EEPROM_ADDR_PID] << 8) | raw[EEPROM_ADDR_PID + 1];
-    capture_max_bytes = 64u;
     eeprom_usb_info.vid = vid;
     eeprom_usb_info.pid = pid;
-    eeprom_usb_info.capture_max_bytes = capture_max_bytes;
     eeprom_usb_info.has_vid = 1u;
     eeprom_usb_info.has_pid = 1u;
-    eeprom_usb_info.has_capture_max_bytes = 1u;
     LOG_INFO("eeprom legacy: VID=0x%04X (%u)", vid, vid);
     LOG_INFO("eeprom legacy: PID=0x%04X (%u)", pid, pid);
-    LOG_INFO("eeprom legacy: captureMaxBytes=%u", capture_max_bytes);
 }
 
 void eeprom_apply_usb_overrides(void)

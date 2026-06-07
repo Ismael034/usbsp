@@ -11,7 +11,6 @@ export const TLV_BCD_DEVICE = 0x03;
 export const TLV_MAX_POWER_MA = 0x04;
 export const TLV_FLAGS = 0x05;
 export const TLV_ATTACH_DELAY_MS = 0x06;
-export const TLV_CAPTURE_MAX_BYTES = 0x07;
 export const TLV_MANUFACTURER = 0x08;
 export const TLV_PRODUCT = 0x09;
 export const TLV_SERIAL = 0x0a;

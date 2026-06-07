@@ -7,13 +7,10 @@ import {
   Divider,
   FormControlLabel,
   IconButton,
-  InputAdornment,
   Stack,
   Switch,
   TextField
 } from "@mui/material";
-import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
-import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import MemoryIcon from "@mui/icons-material/Memory";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import SaveIcon from "@mui/icons-material/Save";
@@ -34,27 +31,91 @@ function HexStepperField({ label, value, onChange, placeholder }) {
     });
   };
 
+  const handleWheel = (event) => {
+    const active = event.currentTarget.querySelector("input") === document.activeElement;
+    if (!active) return;
+    event.preventDefault();
+    setNumericValue((safeValue + (event.deltaY < 0 ? 1 : -1)) & 0xffff);
+  };
+
+  const spinnerButtonSx = {
+    width: 16,
+    height: 11,
+    minWidth: 16,
+    borderRadius: 0,
+    color: "text.secondary",
+    bgcolor: "transparent",
+    p: 0,
+    opacity: 0.72,
+    "&:hover": {
+      bgcolor: "transparent",
+      color: "text.primary"
+    }
+  };
+
+  const spinnerArrowSx = (direction) => ({
+    "&::before": {
+      content: '""',
+      display: "block",
+      width: 0,
+      height: 0,
+      borderLeft: "3.5px solid transparent",
+      borderRight: "3.5px solid transparent",
+      ...(direction === "up"
+        ? { borderBottom: "4.5px solid currentColor" }
+        : { borderTop: "4.5px solid currentColor" })
+    }
+  });
+
   return (
     <TextField
       label={label}
       value={value}
       onChange={onChange}
+      onWheel={handleWheel}
       size="small"
-      inputProps={{ inputMode: "numeric", maxLength: 4 }}
+      inputProps={{ inputMode: "text", maxLength: 4 }}
       placeholder={placeholder}
-      sx={{ flex: 1 }}
+      sx={{
+        flex: 1,
+        "& .hex-spinner": {
+          opacity: 0,
+          pointerEvents: "none"
+        },
+        "&:hover .hex-spinner, &:focus-within .hex-spinner": {
+          opacity: 1,
+          pointerEvents: "auto"
+        }
+      }}
       InputProps={{
         endAdornment: (
-          <InputAdornment position="end" sx={{ mr: -0.25 }}>
-            <Stack spacing={0} sx={{ mr: -0.15 }}>
-              <IconButton size="small" edge="end" sx={{ p: 0.2 }} onClick={() => setNumericValue((safeValue + 1) & 0xffff)}>
-                <KeyboardArrowUpIcon fontSize="inherit" />
-              </IconButton>
-              <IconButton size="small" edge="end" sx={{ p: 0.2 }} onClick={() => setNumericValue((safeValue - 1) & 0xffff)}>
-                <KeyboardArrowDownIcon fontSize="inherit" />
-              </IconButton>
-            </Stack>
-          </InputAdornment>
+          <Stack
+            className="hex-spinner"
+            spacing={0}
+            sx={{
+              position: "absolute",
+              top: "50%",
+              right: 8,
+              transform: "translateY(-50%)",
+              justifyContent: "center",
+              transition: "opacity 120ms ease"
+            }}
+          >
+            <IconButton
+              aria-label={`Increment ${label}`}
+              size="small"
+              tabIndex={-1}
+              sx={{ ...spinnerButtonSx, ...spinnerArrowSx("up") }}
+              onClick={() => setNumericValue((safeValue + 1) & 0xffff)}
+            />
+            <IconButton
+              aria-label={`Decrement ${label}`}
+              size="small"
+              tabIndex={-1}
+              sx={{ ...spinnerButtonSx, ...spinnerArrowSx("down") }}
+              onClick={() => setNumericValue((safeValue - 1) & 0xffff)}
+            />
+          </Stack>
         )
       }}
     />
@@ -161,15 +222,6 @@ export default function ConfigurationTab({
                 onChange={(e) => setConfig((prev) => ({ ...prev, attachDelayMs: clampInt(e.target.value, 0, 60000, 0) }))}
                 size="small"
                 inputProps={{ min: 0, max: 60000 }}
-                sx={{ flex: 1 }}
-              />
-              <TextField
-                label="Capture Max Bytes"
-                type="number"
-                value={config.captureMaxBytes}
-                onChange={(e) => setConfig((prev) => ({ ...prev, captureMaxBytes: clampInt(e.target.value, 0, 512, 64) }))}
-                size="small"
-                inputProps={{ min: 0, max: 512 }}
                 sx={{ flex: 1 }}
               />
             </Stack>

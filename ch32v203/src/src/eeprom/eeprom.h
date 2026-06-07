@@ -26,7 +26,6 @@ typedef struct
     uint8_t has_max_power_ma;
     uint8_t has_flags;
     uint8_t has_attach_delay_ms;
-    uint8_t has_capture_max_bytes;
     uint8_t has_manufacturer;
     uint8_t has_product;
     uint8_t has_serial;
@@ -36,7 +35,6 @@ typedef struct
     uint16_t max_power_ma;
     uint8_t flags;
     uint16_t attach_delay_ms;
-    uint16_t capture_max_bytes;
     char manufacturer[EEPROM_USB_TEXT_MAX_LEN + 1];
     char product[EEPROM_USB_TEXT_MAX_LEN + 1];
     char serial[EEPROM_USB_TEXT_MAX_LEN + 1];
@@ -54,7 +52,6 @@ void tim2_init(uint16_t prescaler);
 
 extern uint16_t vid;
 extern uint16_t pid;
-extern uint16_t capture_max_bytes;
 extern eeprom_usb_info_t eeprom_usb_info;
 
 #endif

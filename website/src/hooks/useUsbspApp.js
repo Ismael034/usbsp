@@ -11,7 +11,6 @@ import {
   PID,
   TLV_ATTACH_DELAY_MS,
   TLV_BCD_DEVICE,
-  TLV_CAPTURE_MAX_BYTES,
   TLV_FLAGS,
   TLV_MANUFACTURER,
   TLV_MAX_POWER_MA,
@@ -92,8 +91,7 @@ function normalizeConfig(config) {
     selfPowered: !!config.selfPowered,
     remoteWakeup: !!config.remoteWakeup,
     bootConnected: !!config.bootConnected,
-    attachDelayMs: clampInt(config.attachDelayMs, 0, 60000, 0),
-    captureMaxBytes: clampInt(config.captureMaxBytes, 0, 512, 64)
+    attachDelayMs: clampInt(config.attachDelayMs, 0, 60000, 0)
   };
 }
 
@@ -255,8 +253,7 @@ export function useUsbspApp({ log, notify, reportError }) {
     selfPowered: false,
     remoteWakeup: false,
     bootConnected: true,
-    attachDelayMs: 0,
-    captureMaxBytes: 64
+    attachDelayMs: 0
   });
   const [versions, setVersions] = useState({ ch572d: null, ch32v203: null });
   const [deviceConfigSnapshot, setDeviceConfigSnapshot] = useState(null);
@@ -401,8 +398,7 @@ export function useUsbspApp({ log, notify, reportError }) {
         selfPowered: flags != null ? (flags & FLAG_SELF_POWERED) !== 0 : false,
         remoteWakeup: flags != null ? (flags & FLAG_REMOTE_WAKEUP) !== 0 : false,
         bootConnected: flags != null ? (flags & FLAG_BOOT_CONNECTED) !== 0 : true,
-        attachDelayMs: u16(TLV_ATTACH_DELAY_MS) != null ? u16(TLV_ATTACH_DELAY_MS) : 0,
-        captureMaxBytes: u16(TLV_CAPTURE_MAX_BYTES) != null ? u16(TLV_CAPTURE_MAX_BYTES) : 64
+        attachDelayMs: u16(TLV_ATTACH_DELAY_MS) != null ? u16(TLV_ATTACH_DELAY_MS) : 0
       }
     };
   }, []);
@@ -687,7 +683,6 @@ export function useUsbspApp({ log, notify, reportError }) {
         tlvs.push(encodeTlv(TLV_MAX_POWER_MA, u16leBytes(nextConfig.maxPowerMa)));
         tlvs.push(encodeTlv(TLV_FLAGS, new Uint8Array([flags & 0xff])));
         tlvs.push(encodeTlv(TLV_ATTACH_DELAY_MS, u16leBytes(nextConfig.attachDelayMs)));
-        tlvs.push(encodeTlv(TLV_CAPTURE_MAX_BYTES, u16leBytes(nextConfig.captureMaxBytes)));
         tlvs.push(encodeTlv(TLV_MANUFACTURER, encoder.encode(nextConfig.manufacturer).slice(0, 60)));
         tlvs.push(encodeTlv(TLV_PRODUCT, encoder.encode(nextConfig.product).slice(0, 60)));
         tlvs.push(encodeTlv(TLV_SERIAL, encoder.encode(nextConfig.serial).slice(0, 60)));

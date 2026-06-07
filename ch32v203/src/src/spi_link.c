@@ -180,7 +180,7 @@ static void spi_link_prepare_capture_reply(void)
 
 static uint8_t spi_link_capture_limit(uint8_t endpoint_type, uint16_t len, uint16_t used)
 {
-    uint16_t limit = capture_max_bytes;
+    uint16_t limit = SPI_CAPTURE_PAYLOAD_MAX;
     uint8_t transfer_type = endpoint_type & 0x03U;
 
     if (transfer_type == 0x02U) {

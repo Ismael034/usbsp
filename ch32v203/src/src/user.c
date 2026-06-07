@@ -15,7 +15,6 @@ static volatile uint8_t reset_requested = 0;
 #define TLV_TYPE_MAX_POWER_MA    0x04u
 #define TLV_TYPE_FLAGS           0x05u
 #define TLV_TYPE_ATTACH_DELAY_MS 0x06u
-#define TLV_TYPE_CAPTURE_MAX_B   0x07u
 #define TLV_TYPE_MANUFACTURER    0x08u
 #define TLV_TYPE_PRODUCT         0x09u
 #define TLV_TYPE_SERIAL          0x0Au
@@ -146,7 +145,6 @@ uint8_t user_build_current_tlv_image(uint8_t *image, uint16_t image_size, uint16
     uint16_t local_bcd_device = 0;
     uint16_t local_max_power_ma = 100u;
     uint16_t attach_delay_ms = eeprom_usb_info.has_attach_delay_ms ? eeprom_usb_info.attach_delay_ms : 0u;
-    uint16_t local_capture_max_bytes = capture_max_bytes;
     uint8_t flags = eeprom_usb_info.has_flags ? eeprom_usb_info.flags : TLV_FLAG_BOOT_CONNECTED;
     char manufacturer[TLV_TEXT_MAX_LEN + 1];
     char product[TLV_TEXT_MAX_LEN + 1];
@@ -211,7 +209,6 @@ uint8_t user_build_current_tlv_image(uint8_t *image, uint16_t image_size, uint16
     if (tlv_append_u16(&p, &left, TLV_TYPE_MAX_POWER_MA, local_max_power_ma)) return 1u;
     if (tlv_append_u8(&p, &left, TLV_TYPE_FLAGS, flags)) return 1u;
     if (tlv_append_u16(&p, &left, TLV_TYPE_ATTACH_DELAY_MS, attach_delay_ms)) return 1u;
-    if (tlv_append_u16(&p, &left, TLV_TYPE_CAPTURE_MAX_B, local_capture_max_bytes)) return 1u;
     if (tlv_append_str(&p, &left, TLV_TYPE_MANUFACTURER, manufacturer)) return 1u;
     if (tlv_append_str(&p, &left, TLV_TYPE_PRODUCT, product)) return 1u;
     if (tlv_append_str(&p, &left, TLV_TYPE_SERIAL, serial)) return 1u;
