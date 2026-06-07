@@ -1,8 +1,23 @@
 # USBsp
 
-A work in progress for a (really) cheap embedded USB packet analyzer. CURRENTLY NOT FUNCTIONAL
+Have you ever tried to plug a USB device into a computer that has USB restrictions enabled? It's frustrating, isn't it? You can't use your USB devices, and you have no way to bypass the restrictions. But what if I told you that you could spoof the USB identifiers so you bypass these restrictions? That's where USBsp comes in.
 
-## Builing
+Here is your solution!
+
+![USBsp hardware](images/usbsp.png)
+
+USBsp is a USB device that can spoof the USB identifiers of any device you want. It is based on the CH32V203 and CH572D microcontrollers. With USBsp, you can easily bypass USB restrictions and use your USB devices without any issues.
+
+## Features
+
+- Spoofs basic USB descriptor fields: VID, PID, bcdDevice, manufacturer, product and serial.
+- Stores the spoofed descriptor settings in EEPROM.
+- WebUSB control panel for changing settings from a Chromium-based browser.
+- Can read descriptor-like values from the currently connected downstream USB device and use them as a starting point.
+- Basic live packet capture.
+- Simple HID keyboard/mouse visualizers.
+
+## Building
 
 The required toolchain is alredy included. It is a custom toolchain made by WCH, downloaded from [here](https://www.mounriver.com/download). This toolchain constains custom targets for their MCUs. Other toolchains (like xpack) have not been tested.
 
@@ -49,5 +64,4 @@ It is also possible to build a test firmware, which will test hardware funcional
 
 ```
 ninja -C build-ch32v203 ch32v203/ch32v203_test.hex
-ninja -C build-ch572d ch572d/ch572d_test.hex
 ```
