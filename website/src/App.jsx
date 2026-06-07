@@ -55,6 +55,7 @@ export default function App({ colorMode = "light", onToggleColorMode = null }) {
   };
 
   const webVersion = import.meta.env.VITE_WEB_VERSION ?? "dev";
+  const iconUrl = `${import.meta.env.BASE_URL}favicon.svg`;
   const statusChip = useMemo(() => {
     if (app.connected) return { label: "Connected", color: "success" };
     return { label: "Disconnected", color: "error" };
@@ -75,7 +76,7 @@ export default function App({ colorMode = "light", onToggleColorMode = null }) {
             >
               <Box
                 component="img"
-                src="/favicon.svg"
+                src={iconUrl}
                 alt="USBsp icon"
                 sx={{ width: 28, height: 28, display: "block" }}
               />
